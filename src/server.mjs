@@ -34,6 +34,8 @@ const MiB = 1024 * 1024;
 export const SERVER_LIMITS = Object.freeze({
   jsonBytes: MiB,
   blobBytes: 4 * MiB,
+  // How much of an over-size body is read and discarded before the connection is cut.
+  drainBytes: 16 * MiB,
   requestMs: 30_000,
   headersMs: 10_000,
   keepAliveMs: 5_000,
@@ -278,14 +280,37 @@ function checkContentType(req, input) {
   return { text: true };
 }
 
-// Reads at most `cap` bytes. Past the cap the rest is discarded and the
-// connection closes after the 413 response.
+// Past the cap, the rest of a body is read and thrown away, up to
+// SERVER_LIMITS.drainBytes in total, and the connection stays open. Closing
+// at once would reset the connection while the client is still sending, and
+// on some platforms the client then sees a broken pipe instead of the 413. A
+// body that grows beyond drainBytes is cut off by destroying the connection.
+function discardRest(req, alreadyRead) {
+  let seen = alreadyRead;
+  req.on('data', (chunk) => {
+    seen += chunk.length;
+    if (seen > SERVER_LIMITS.drainBytes) req.destroy();
+  });
+  req.resume();
+}
+
+function tooLarge(cap, headers = {}) {
+  return new HttpError(413, 'too_large', `Request body is larger than ${cap} bytes`, headers);
+}
+
+// Reads at most `cap` bytes, refusing larger bodies with 413.
 function readBody(req, cap) {
   return new Promise((resolve, reject) => {
     const declared = req.headers['content-length'];
     if (declared !== undefined && Number(declared) > cap) {
-      req.resume();
-      reject(new HttpError(413, 'too_large', `Request body is larger than ${cap} bytes`, { Connection: 'close' }));
+      if (Number(declared) > SERVER_LIMITS.drainBytes) {
+        // Not worth reading: answer and close.
+        req.resume();
+        reject(tooLarge(cap, { Connection: 'close' }));
+      } else {
+        discardRest(req, 0);
+        reject(tooLarge(cap));
+      }
       return;
     }
     const chunks = [];
@@ -299,8 +324,8 @@ function readBody(req, cap) {
       size += chunk.length;
       if (size > cap) {
         cleanup();
-        req.resume();
-        reject(new HttpError(413, 'too_large', `Request body is larger than ${cap} bytes`, { Connection: 'close' }));
+        discardRest(req, size);
+        reject(tooLarge(cap));
         return;
       }
       chunks.push(chunk);

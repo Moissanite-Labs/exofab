@@ -6,6 +6,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { request } from 'node:http';
+import { connect } from 'node:net';
 import { inspect } from 'node:util';
 import { mkdtemp, readFile, rm, symlink, writeFile, mkdir, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -58,6 +59,56 @@ function raw(port, { method = 'GET', path = '/', headers = {}, body } = {}) {
     req.on('error', reject);
     if (body !== undefined) req.write(body);
     req.end();
+  });
+}
+
+// An over-size upload on a raw socket. The client sends enough for the hub to
+// refuse (the declared length, or more than 1 MiB of a chunked body), waits
+// for the answer, keeps sending the rest of its body, and then sends a second
+// request on the same connection. A hub that closes the connection as soon as
+// it refuses makes those writes fail (EPIPE or ECONNRESET, depending on the
+// platform). Resolves with both status lines.
+function oversizedUploadThenReuse(port, declared) {
+  const piece = Buffer.alloc(64 * 1024, 0x20);
+  const pieces = 20;
+  const beforeAnswer = declared ? 1 : 17; // 17 pieces = 1.0625 MiB, past the JSON cap
+  const frame = (buf) => (declared ? buf : Buffer.concat([Buffer.from(`${buf.length.toString(16)}\r\n`), buf, Buffer.from('\r\n')]));
+  const head = [
+    'POST /api/people HTTP/1.1',
+    `Host: 127.0.0.1:${port}`,
+    'Content-Type: application/json',
+    declared ? `Content-Length: ${piece.length * pieces}` : 'Transfer-Encoding: chunked',
+    '', '',
+  ].join('\r\n');
+  return new Promise((resolve, reject) => {
+    const socket = connect({ host: '127.0.0.1', port });
+    let received = '';
+    let state = 'first';
+    const write = (data) => new Promise((ok, fail) => socket.write(data, (error) => (error ? fail(error) : ok())));
+    const statuses = () => [...received.matchAll(/^HTTP\/1\.1 (\d{3})/gm)].map((m) => Number(m[1]));
+    socket.on('error', reject);
+    socket.on('end', () => reject(new Error(`hub closed the connection after: ${statuses().join(', ') || 'nothing'}`)));
+    socket.on('data', async (data) => {
+      received += data.toString('latin1');
+      if (state === 'first' && statuses().length === 1) {
+        state = 'rest';
+        try {
+          await new Promise((r) => setTimeout(r, 50));
+          for (let i = beforeAnswer; i < pieces; i++) await write(frame(piece));
+          if (!declared) await write('0\r\n\r\n');
+          await write(`GET /api/health HTTP/1.1\r\nHost: 127.0.0.1:${port}\r\n\r\n`);
+        } catch (error) {
+          reject(error);
+        }
+      } else if (state === 'rest' && statuses().length === 2) {
+        state = 'done';
+        socket.removeAllListeners('end');
+        socket.destroy();
+        resolve(statuses());
+      }
+    });
+    socket.write(head);
+    for (let i = 0; i < beforeAnswer; i++) socket.write(frame(piece));
   });
 }
 
@@ -294,6 +345,9 @@ test('JSON routes require application/json and strict JSON within 1 MiB', async 
     req.end();
   });
   assert.equal(chunked, 413);
+  // A client still uploading when the hub refuses can finish sending and read the 413:
+  // the hub discards the rest of the body and keeps the connection usable.
+  for (const declared of [true, false]) assert.deepEqual(await oversizedUploadThenReuse(port, declared), [413, 200]);
   // Accepted forms reach the hub, which validates the fields.
   assertError(await post({ 'Content-Type': 'application/json; charset=UTF-8' }, '{}'), 422, 'invalid');
   assertError(await post({ 'Content-Type': 'Application/JSON' }, '[]'), 422, 'invalid');
