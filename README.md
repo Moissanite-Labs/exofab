@@ -17,7 +17,20 @@ Exofab is a proposed human-first or hybrid collaboration hub where people and ag
 - [First slice proposal](docs/first-slice.md): the proposed first use case, worked example, and acceptance criteria
 - [Roadmap and decision record](docs/roadmap.md): proposed stages, recorded decisions, and proposals under review
 - [Prior art notes](docs/research/prior-art.md): reference material from earlier platforms
+- [First-slice prototype](docs/prototype.md): a local reference prototype for testing the proposal (proposal P-4)
 - [Contributing](CONTRIBUTING.md) and [agent guidance](AGENTS.md)
+
+## Try the prototype
+
+The prototype is a proposal under review, not an adopted product. It needs Node.js 22 or newer and installs nothing.
+
+```sh
+npm run demo    # the synthetic journey end to end, with an exported, verified record
+npm start       # the local hub and browser client at http://127.0.0.1:4317
+npm test
+```
+
+All data is fictional. See [prototype](docs/prototype.md) for what it does and does not do.
 
 ## License
 
