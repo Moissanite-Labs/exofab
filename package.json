@@ -1,0 +1,20 @@
+{
+  "name": "exofab",
+  "version": "0.1.0",
+  "description": "Local reference prototype of the Exofab first slice (proposal).",
+  "private": true,
+  "license": "UNLICENSED",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "bin": {
+    "exofab": "src/cli.mjs"
+  },
+  "scripts": {
+    "start": "node src/cli.mjs serve",
+    "check": "node scripts/check.mjs",
+    "test": "node --test",
+    "demo": "node src/cli.mjs demo"
+  }
+}
