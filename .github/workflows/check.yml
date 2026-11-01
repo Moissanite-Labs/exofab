@@ -1,0 +1,32 @@
+name: Check
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+concurrency:
+  group: check-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  check:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        node: [22, 24]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    steps:
+      # Pinned to the same commits as the sibling Synbios CI.
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: ${{ matrix.node }}
+      - run: npm run check
+      - run: npm test
+      - run: npm run demo -- --out "$RUNNER_TEMP/exofab-demo"
+      - name: Checks leave tracked files unchanged
+        run: git diff --exit-code
