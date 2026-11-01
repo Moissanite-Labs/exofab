@@ -18,7 +18,7 @@ Exofab's own part of the journey is the human part: discovery, consent to work t
 
 **Proposed:** small teams of two to five people forming around a software project, where at least one person brings an idea, need, or audience and at least one person builds. Either may bring an agent.
 
-**Proposed pilot population:** people already working in the Exo ecosystem, building small things such as Exo skills or plugins. The published Exo roadmap says the first marketplace should start "where Exo already has the people" and that there should be "no general hub before the first small marketplace works" ([exo-site roadmap:270, :492](https://github.com/Moissanite-Labs/exo-site/blob/9147eb147801fac3aaa2594ccaa45c6d77a768a5/roadmap/index.html#L270)). A pilot with that group avoids starting with an empty network.
+**Proposed pilot population:** people already working in the Exo ecosystem, building small things such as Exo skills or plugins. The published Exo roadmap says the first marketplace starts "where Exo already has the people" ([exo-site roadmap:492](https://github.com/Moissanite-Labs/exo-site/blob/9147eb147801fac3aaa2594ccaa45c6d77a768a5/roadmap/index.html#L492)), and a pilot with that group avoids starting with an empty network. The same roadmap places the collaboration hub on its horizon and says "no general hub before the first small marketplace works" ([:255](https://github.com/Moissanite-Labs/exo-site/blob/9147eb147801fac3aaa2594ccaa45c6d77a768a5/roadmap/index.html#L255), [:270](https://github.com/Moissanite-Labs/exo-site/blob/9147eb147801fac3aaa2594ccaa45c6d77a768a5/roadmap/index.html#L270)). This slice builds hub steps (briefs, matching, charters) before any marketplace, so it departs from that order unless maintainers treat a local, Exo-only pilot as short of a general hub. See [risks](#risks-and-open-questions).
 
 **Assumption:** the first teams have at least two humans. Koinos requires this for any accepted contribution. The reviewer must be a human party to the agreement who is neither the submitter nor the delegating principal ([koinos docs/protocol.md:21](https://github.com/Moissanite-Labs/koinos/blob/5b5f4f9eaffe45a718601744366b8ac507ffc4b6/docs/protocol.md#L21)). A solo builder delegating to their own agent cannot reach acceptance. In this slice, finding a partner is therefore a precondition of the record, not an optional extra.
 
@@ -58,10 +58,10 @@ All names are fictional. The example follows the sequence Koinos recommends for 
 | Express interest in a role | A person other than the brief owner | The brief and role | Hub log; visible to owner and candidate |
 | Accept or decline interest | The brief owner | Candidate profile and note | Hub log; acceptance adds a team member |
 | Nominate an agent | The agent's registered principal, on the team | The agent's identity | Hub log |
-| Start the record | The brief owner, who becomes steward | The exact participant list | Koinos `project.created` |
+| Start the record | Any listed human, who becomes steward (Exofab proposes: the brief owner) | The exact participant list | Koinos `project.created` |
 | Propose the charter | The steward | The exact terms text and digest | Koinos `agreement.proposed` |
 | Consent or withdraw consent | Each named party | The exact terms text and digest | Koinos `agreement.consented` or `agreement.withdrawn` |
-| Delegate a scoped task | A consenting party, to their own agent | Agent, agreement, expiry | Koinos `delegation.granted` |
+| Delegate a scoped task | A human party, once every party currently consents (Exofab policy 2: only to their own agent) | Agent, agreement, expiry | Koinos `delegation.granted` |
 | Revoke a delegation | The grantor | The delegation | Koinos `delegation.revoked` |
 | Submit a contribution | The delegated agent, or a human party | Artifact digest and summary | Koinos `contribution.submitted` |
 | Review | A human party who is not the submitter or principal | Artifact bytes and evidence | Koinos `contribution.reviewed` |
@@ -69,13 +69,13 @@ All names are fictional. The example follows the sequence Koinos recommends for 
 | Dispute an acceptance | Any human party | The accepted contribution | Koinos `contribution.disputed` |
 | Export | Any participant | The complete history | Bundle file plus referenced bytes |
 
-The Koinos rows restate Koinos 0.1 rules. Exofab adds the following **proposed hub policies** on top. Each one narrows what Koinos allows; none widens it.
+The table names who may act; Koinos 0.1 adds further preconditions, such as current consent from every party before a submission or acceptance. The Koinos rows follow Koinos 0.1, narrowed where noted by the proposed hub policies below. Exofab adds the following **proposed hub policies** on top. Each one narrows what Koinos allows; none widens it.
 
 1. **People sign; the hub sequences.** Each record is signed in its author's own client after they see the exact record. The hub verifies and orders records, and stores no private keys. A record is accepted only from the authenticated person or agent whose key signed it.
 2. **Delegate only to your own agent.** Koinos lets any human party grant any listed agent. Exofab proposes that a person can delegate only to an agent registered under their own account, so the delegating principal is also the accountable owner.
 3. **Bytes are held, not just referenced.** Terms and artifacts must be stored in the hub before a record cites them, using content-addressed [RFC 6920](https://www.rfc-editor.org/rfc/rfc6920) `ni:///sha-256;…` URIs. Reviewers then always review the exact bytes, and URIs carry no local paths.
 4. **Agents cannot act socially.** Agent credentials cannot publish briefs, express interest, accept matches, consent, review, or accept. They can only submit contributions under an active delegation.
-5. **Private by default.** A project's records and bytes are visible only to its participants. Profiles and briefs are visible in the hub only when their owners list them.
+5. **Private by default.** A project's records and bytes are visible only to its participants. Profiles and briefs are visible in the hub only when their owners list them, except to people the hub has already put in contact: a brief's owner and its candidates, and teammates.
 6. **Plausible times.** A record's time must be close to the hub's clock, in addition to Koinos's nondecreasing-time rule.
 
 ## How the slice uses Koinos
@@ -118,7 +118,7 @@ The slice is ready for review when each of these can be shown, using synthetic d
 4. An agent submits only under an active, scoped, expiring delegation from its own principal. Revocation or expiry before acceptance prevents acceptance.
 5. A review by the submitter or the principal is refused.
 6. The exported bundle verifies unchanged with Exofab's verifier and with the Koinos reference verifier. Re-importing it yields the same head, participants, and attribution.
-7. A reader can trace an accepted contribution to its artifact bytes and to the agreed charter text, which is the Koinos definition of done for its own slice ([koinos docs/vision.md:42](https://github.com/Moissanite-Labs/koinos/blob/5b5f4f9eaffe45a718601744366b8ac507ffc4b6/docs/vision.md#L42)).
+7. A reader can trace an accepted contribution to its artifact bytes and to the agreed charter text, and can inspect the delegation scope it was submitted under. Together with criterion 6, this adapts the readiness test Koinos proposes for its own slice: trace to evidence, inspect the scope and agreement references, and run the documented conformance examples ([koinos docs/vision.md:42](https://github.com/Moissanite-Labs/koinos/blob/5b5f4f9eaffe45a718601744366b8ac507ffc4b6/docs/vision.md#L42)). Koinos's own conformance examples are not part of this slice.
 8. Each refusal rule has a test, as well as the successful journey.
 
 ## Alternatives considered
@@ -129,7 +129,7 @@ The slice is ready for review when each of these can be shown, using synthetic d
 | --- | --- | --- | --- |
 | Builder and idea-holder pair | Matches the founder framing; exercises matching, consent, delegation, and review; satisfies Koinos's two-human rule | Needs at least two committed people per project | **Recommended** |
 | "Exo builds Exo": agents propose fixes to Exo, maintainers accept ([exo-site roadmap:123](https://github.com/Moissanite-Labs/exo-site/blob/9147eb147801fac3aaa2594ccaa45c6d77a768a5/roadmap/index.html#L123)) | Real users and real work exist today | A maintainer-review loop is mostly forge and code-host work; it barely exercises discovery or agreement | Use as the pilot population, not the journey |
-| A small marketplace for skills, agents, and pets ([exo-site roadmap:492](https://github.com/Moissanite-Labs/exo-site/blob/9147eb147801fac3aaa2594ccaa45c6d77a768a5/roadmap/index.html#L492)) | Concrete demand signal | Listings quickly imply pricing and payment, which are out of scope | Revisit after the slice |
+| A small marketplace for skills, agents, and pets ([exo-site roadmap:492](https://github.com/Moissanite-Labs/exo-site/blob/9147eb147801fac3aaa2594ccaa45c6d77a768a5/roadmap/index.html#L492)) | Concrete demand signal | Listings quickly imply pricing and payment, which are out of scope | Revisit after the slice; the Exo roadmap orders this before a general hub (see risks) |
 
 **Record layer**
 
@@ -137,15 +137,15 @@ The slice is ready for review when each of these can be shown, using synthetic d
 | --- | --- |
 | Koinos 0.1 records and bundles | **Recommended.** They already implement the needed records; Exofab would be an adapter and a second independent implementation, which the Koinos roadmap asks for. |
 | Exofab-native contribution records | Rejected: duplicates Koinos and fragments provenance. |
-| Wait for the unmerged Koinos 0.2 proposal | Rejected for now: it is unmerged and adds tokens and payouts that conflict with the credos stance. Revisit if Koinos adopts it. |
+| Wait for the unmerged Koinos 0.2 proposal ([Koinos #6](https://github.com/Moissanite-Labs/koinos/pull/6), read at [`12cace9`](https://github.com/Moissanite-Labs/koinos/blob/12cace9c09887a66d41182fa0490c5ff641d890a/README.md#L5) on 2026-11-01) | Rejected for now: it is unmerged and adds token issuance and settlement records that the credos draft does not promise ([SILICONCORDAT.md:27](https://github.com/Moissanite-Labs/credos/blob/d3a5a619a725f28b1a359c89080d92091db8fb45/SILICONCORDAT.md#L27)). Revisit if Koinos adopts it. |
 | Exo ledger events | Rejected for shared records: the Exo ledger belongs to one principal. |
 
 **Key custody**
 
 | Option | Proposal |
 | --- | --- |
-| Keys held by each person's client (browser WebCrypto, CLI key file) | **Recommended.** A signature then means the person signed. |
-| Keys held by the hub | Rejected: a signature would only prove the hub signed. |
+| Keys held by each person's client (browser WebCrypto, CLI key file) | **Recommended.** The hub never holds or receives a private key, so a breach of its stored data reveals no keys, and the hub cannot sign for anyone who is not using a client. A signature shows that software on the signer's device used their key. When the hub also serves the browser client, that software is whatever the hub served, so a hub serving altered code could make a person's browser sign records they never saw (see risks). A client distributed separately from the hub moves that trust to whoever distributes the client. |
+| Keys held by the hub | Rejected: whoever controls the hub or its stored keys could sign as anyone, at any time, without any client involved. |
 | Reuse Exo seat keys | Later; it needs an Exo decision about key reuse across protocols. |
 
 **Matching**
@@ -158,8 +158,10 @@ The slice is ready for review when each of these can be shown, using synthetic d
 ## Risks and open questions
 
 - **Decision owner.** No Exofab maintainer or decision owner is recorded. Choosing initial maintainers is credos milestone 1.
-- **Economic direction.** The founder's raw notes in the Koinos repository explore trust-minimized payouts and smart contracts. The credos draft does not promise them. This slice records references to human agreements only. A different direction would change the charter template and every later stage.
+- **Economic direction.** Founder ideas recorded in the Koinos vision include smart contracts, payment tools such as x402, and credit and profits allocated by rules participants explicitly agree to, as historical ideas to evaluate ([koinos docs/vision.md:28-30](https://github.com/Moissanite-Labs/koinos/blob/5b5f4f9eaffe45a718601744366b8ac507ffc4b6/docs/vision.md#L28-L30)). The credos draft does not promise payments or smart-contract execution ([SILICONCORDAT.md:27](https://github.com/Moissanite-Labs/credos/blob/d3a5a619a725f28b1a359c89080d92091db8fb45/SILICONCORDAT.md#L27)). This slice records references to human agreements only. A different direction would change the charter template and every later stage.
 - **Identity.** A key proves control, not personhood. The slice uses local accounts with proof of key possession. Real identity, recovery, and rotation are open across the ecosystem.
+- **Client code.** Browser-held keys are only as trustworthy as the code that uses them. While the hub serves the browser client, whoever controls the hub can make a person's browser sign. How the client is distributed and checked is open.
+- **Order relative to the Exo roadmap.** The Exo roadmap puts a small marketplace before any general hub and places the hub on its horizon ([exo-site roadmap:255](https://github.com/Moissanite-Labs/exo-site/blob/9147eb147801fac3aaa2594ccaa45c6d77a768a5/roadmap/index.html#L255), [:270](https://github.com/Moissanite-Labs/exo-site/blob/9147eb147801fac3aaa2594ccaa45c6d77a768a5/roadmap/index.html#L270)). This proposal pilots a hub journey first and defers the marketplace. Hub ownership is not recorded (see [ecosystem boundaries](ecosystem.md#open-boundary-questions)), so whether this order is acceptable is an open question for Exofab and Exo maintainers.
 - **Unlisted participants.** Koinos bundles are fully visible to anyone who receives them. Names, notes, and summaries must be written for that audience.
 - **Two reviews.** With Synbios, a person reviews in the forge and again in Exofab. A combined flow needs an adapter decision.
 - **Public credit.** Whether and how a person can show accepted work outside the team needs the consent of the other participants. The slice keeps credit visible to the team only.
