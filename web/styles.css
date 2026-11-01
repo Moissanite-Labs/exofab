@@ -1137,6 +1137,15 @@ legend {
   .panel { padding: var(--space-3); }
   .card { padding: var(--space-3); }
   .modal-actions .btn { flex: 1 1 auto; }
+
+  /* Labels name their target, such as a contribution title of any length, so
+     a button wraps rather than widening the page. */
+  .btn {
+    max-width: 100%;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    padding-block: var(--space-1);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

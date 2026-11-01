@@ -6,7 +6,7 @@
 //   bundle.json      canonical JSON of the bundle, then a newline
 //   blobs/<sha256>   each cited agreement text and artifact, named by its hex digest
 //   VERIFY.txt       how to verify, with and without Exofab
-import { mkdir, open, constants } from 'node:fs/promises';
+import { lstat, mkdir, open, constants } from 'node:fs/promises';
 import { join } from 'node:path';
 import { BUNDLE_FORMAT, LIMITS, NI_PREFIX, canonicalize, hexFromNiUri, sha256Hex, verifyBundle } from './koinos/index.mjs';
 import { parseStrictJson } from './json/strict.mjs';
@@ -92,6 +92,27 @@ Trust notes
 `;
 }
 
+// The names an export writes in its directory.
+export const EXPORT_NAMES = Object.freeze(['bundle.json', 'blobs', 'VERIFY.txt']);
+
+// Refuses an output directory that already holds any part of an export, so
+// nothing is written into it at all rather than a mix of old and new files.
+// lstat, so a symbolic link counts as present even when its target is not.
+// The exclusive creates in writeExport still guard against a race.
+export async function assertExportTarget(outDir) {
+  for (const name of EXPORT_NAMES) {
+    const path = join(outDir, name);
+    try {
+      await lstat(path);
+    } catch (error) {
+      if (error.code === 'ENOENT') continue;
+      if (error.code === 'ENOTDIR') throw new ExportError(`${outDir} is not a directory`, { cause: error });
+      throw new ExportError(`Cannot check ${path} (${error.code ?? 'error'})`, { cause: error });
+    }
+    throw new ExportError(`${path} already exists; choose an empty or new output directory. Nothing was written.`);
+  }
+}
+
 // Opens a new file exclusively and writes it, mode 0600.
 async function writeNew(path, data) {
   const handle = await open(path, 'wx', 0o600);
@@ -103,9 +124,11 @@ async function writeNew(path, data) {
   }
 }
 
-// Verifies the bundle and the bytes, then writes the export. Files are created
-// exclusively, so nothing that already exists is overwritten. `blobs` maps hex
-// digests to bytes and must hold every digest the records cite.
+// Verifies the bundle and the bytes, then writes the export. An output
+// directory that already holds part of an export is refused before anything
+// is written, and files are created exclusively, so nothing that already
+// exists is overwritten. `blobs` maps hex digests to bytes and must hold every
+// digest the records cite.
 export async function writeExport({ outDir, bundle, blobs }) {
   const state = await verifyBundle(bundle);
   const cited = referencedDigests(state);
@@ -114,6 +137,7 @@ export async function writeExport({ outDir, bundle, blobs }) {
     if (!bytes) throw new ExportError(`The bytes of ${kind} ${id} (sha256 ${digest}) are not available, so the export would be incomplete`);
     if ((await sha256Hex(bytes)) !== digest) throw new ExportError(`The stored bytes for sha256 ${digest} do not match their digest`);
   }
+  await assertExportTarget(outDir);
   await mkdir(outDir, { recursive: true, mode: 0o700 });
   await mkdir(join(outDir, 'blobs'), { mode: 0o700 });
   await writeNew(join(outDir, 'bundle.json'), `${canonicalize(bundle)}\n`);

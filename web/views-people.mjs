@@ -1,6 +1,6 @@
 // Profile (this browser's identities, the hub profile, my agents, my credit),
 // another person's profile and credit, and the list of my projects.
-import { h, section, emptyState, badge, facts, field, idCode, mono, notice, table, timeEl } from './render.mjs';
+import { h, section, emptyState, badge, facts, field, idCode, mono, notice, stateBadge, table, timeEl } from './render.mjs';
 import { href } from './routes.mjs';
 import { formatTime, shortId } from './format.mjs';
 import { confirmAction, openDialog } from './dialog.mjs';
@@ -10,26 +10,37 @@ import { announce, pageHead, problem, list, str, skillTags, needIdentity, needRe
 
 // --- Credit -------------------------------------------------------------------------------
 
-// Accepted contributions; `agents` names agent ids for the "via" line.
+// Accepted contributions, including accepted work a party later disputed,
+// which is marked with who disputed it, when and why. `agents` names agent
+// ids for the "via" line.
 function creditList(items, agents = new Map()) {
   if (!list(items).length) return emptyState('No accepted contributions in projects you share. Credit is a record of accepted work, not money and not a score.');
   return h(
     'ul',
     { class: 'card-list' },
-    list(items).map((c) =>
-      h(
+    list(items).map((c) => {
+      const dispute = c.status === 'disputed' && c.dispute && typeof c.dispute === 'object' ? c.dispute : null;
+      return h(
         'li',
         { class: 'card' },
-        h('h3', { class: 'card-title' }, str(c.contribution?.title, 'Untitled contribution')),
+        h(
+          'div',
+          { class: 'card-head' },
+          h('h3', { class: 'card-title' }, str(c.contribution?.title, 'Untitled contribution')),
+          dispute ? stateBadge('disputed', 'Accepted, then disputed') : stateBadge('accepted', 'Accepted'),
+        ),
         h('p', {}, 'In ', h('a', { href: href('project', { pid: c.project }) }, str(c.projectTitle, 'a project'))),
         c.contribution?.summary ? h('p', { class: 'prose' }, prose(c.contribution.summary)) : null,
         facts([
           ['Accepted', timeEl(c.acceptedAt)],
           c.via ? ['Submitted by agent', str(agents.get(c.via), shortId(c.via), 120)] : null,
+          dispute ? ['Disputed by', str(dispute.byName, shortId(dispute.by), 120)] : null,
+          dispute ? ['Disputed', timeEl(dispute.at)] : null,
           ['Artifact digest (SHA-256)', mono(str(c.contribution?.artifact?.digest, ''))],
         ]),
-      ),
-    ),
+        dispute ? h('div', { class: 'dispute' }, h('p', { class: 'prose' }, prose(dispute.reason, 'No reason given.'))) : null,
+      );
+    }),
   );
 }
 

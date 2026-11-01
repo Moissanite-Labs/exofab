@@ -17,6 +17,7 @@ import { ExofabClient, ExofabHttpError } from './client.mjs';
 import { ExportError, EXPORT_LIMITS, readBundleFile, readFileCapped, referencedDigests, verifyExport, writeExport } from './export.mjs';
 import { runDemo } from './demo.mjs';
 import { synbiosCommand } from './cli-synbios.mjs';
+import { safe } from './display.mjs';
 
 const DEFAULT_DATA = '.exofab';
 const DEFAULT_PORT = 4317;
@@ -60,7 +61,9 @@ hub or an import from using the same directory at the same time. Stop with Ctrl+
 Runs the synthetic first-slice journey through the HTTP API of a hub started on a
 free loopback port: Ada and Ben form a team, agree a charter, Ben delegates to his
 agent scribe, scribe submits, Ada reviews and accepts. The result is exported to
---out (default: a new temporary directory) and verified from disk.
+--out (default: a new temporary directory) and verified from disk. --out must
+not already hold an export (bundle.json, blobs or VERIFY.txt); the demonstration
+checks this before it starts.
 --data keeps the hub's data in DIR, which must be empty or absent; without it a
 temporary directory is used and removed afterwards. All data is fictional.
 `,
@@ -116,9 +119,7 @@ class UsageError extends Error {}
 class CliError extends Error {}
 
 // Untrusted text (hub messages, record fields) cannot drive the terminal:
-// control, bidirectional and line-separator characters are escaped.
-const UNSAFE = /[\u0000-\u0008\u000b-\u001f\u007f-\u009f\u200e\u200f\u202a-\u202e\u2066-\u2069\u2028\u2029\u061c]/g;
-const safe = (text) => String(text).replace(UNSAFE, (c) => `\\u${c.charCodeAt(0).toString(16).padStart(4, '0')}`);
+// everything written to stdout or stderr from them goes through safe().
 const printJson = (stream, value) => stream.write(`${safe(JSON.stringify(value, null, 2))}\n`);
 
 function parse(args, options, positionals) {
@@ -295,7 +296,7 @@ async function verify(args, io) {
   if (!result.ok) io.stderr.write('exofab verify: the history verifies, but cited bytes are missing or do not match\n');
   // A URI of another scheme is neither fetched nor checked; only the digest binds the bytes.
   for (const { kind, id, uri } of cited.filter((c) => !c.uri.startsWith(NI_PREFIX))) {
-    io.stderr.write(`exofab verify: warning: ${kind} ${id} cites ${JSON.stringify(uri)}, which is not an ni:///sha-256 URI; it was not checked or fetched\n`);
+    io.stderr.write(`${safe(`exofab verify: warning: ${kind} ${id} cites ${JSON.stringify(uri)}, which is not an ni:///sha-256 URI; it was not checked or fetched`)}\n`);
   }
   return result.ok ? 0 : 1;
 }

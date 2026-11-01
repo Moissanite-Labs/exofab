@@ -315,3 +315,28 @@ test('verify prints every cited URI and warns about one that is not an ni: URI',
     }
   }
 });
+
+test('the verify warning escapes bidirectional and C1 control characters from a cited URI', async (t) => {
+  const dir = await tempDir(t);
+  const ada = await generateIdentity();
+  const digest = await sha256Hex('Synthetic terms.\n');
+  // Koinos accepts any non-whitespace URI, including U+202E (right-to-left
+  // override), U+009B (8-bit CSI) and U+2066 (left-to-right isolate).
+  const uri = 'https://example.invalid/terms\u202etxt.exe\u009b2J\u2066x';
+  const records = [];
+  const participants = [{ id: ada.id, name: 'Ada', kind: 'human' }];
+  records.push(await createRecord({ records, identity: ada, kind: 'project.created', body: { title: 'Elsewhere', description: 'Synthetic.', participants } }));
+  records.push(await createRecord({ records, identity: ada, kind: 'agreement.proposed', body: { title: 'Terms', uri, digest, parties: [ada.id] } }));
+  const bundle = join(dir, 'bundle.json');
+  await writeFile(bundle, JSON.stringify({ format: BUNDLE_FORMAT, records }));
+
+  const out = await cli(['verify', bundle]);
+  assert.equal(out.status, 0, out.stderr);
+  for (const ch of ['\u202e', '\u009b', '\u2066']) {
+    const name = `U+${ch.codePointAt(0).toString(16).padStart(4, '0')}`;
+    assert.equal(out.stdout.includes(ch), false, `raw ${name} on stdout`);
+    assert.equal(out.stderr.includes(ch), false, `raw ${name} on stderr`);
+  }
+  assert.ok(out.stderr.includes('terms\\u202etxt.exe\\u009b2J\\u2066x'), out.stderr);
+  assert.match(out.stderr, /which is not an ni:\/\/\/sha-256 URI; it was not checked or fetched\n$/);
+});

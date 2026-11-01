@@ -38,7 +38,7 @@ export function briefCard(brief, { me, skills = [] } = {}) {
         { class: 'badges' },
         brief.owner === me ? badge('Your brief', 'accent') : brief.team ? badge('Your team', 'steel') : null,
         badge(brief.status === 'open' ? 'Open' : 'Closed'),
-        brief.project ? badge('Record started', 'steel') : null,
+        brief.started || brief.project ? badge('Record started', 'steel') : null,
       ),
     ),
     brief.summary ? h('p', { class: 'prose' }, str(brief.summary)) : null,

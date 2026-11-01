@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 import { mkdtemp, rm, readdir, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { Hub, HubError, HUB_LIMITS, TOKEN_PATTERN, personProofText, agentProofText } from '../src/hub/hub.mjs';
+import { Hub, HubError, HUB_LIMITS, TOKEN_PATTERN, DELEGATION_EXPIRED, personProofText, agentProofText } from '../src/hub/hub.mjs';
 import { FileStore, StoreError } from '../src/hub/store.mjs';
 import {
   BUNDLE_FORMAT,
@@ -319,6 +319,7 @@ test('the full journey: from a listed brief to an accepted contribution anyone c
         summary: 'Scales ingredient amounts; 12 tests pass.',
         artifact: { uri: w.artifact.uri, digest: w.artifact.digest },
       },
+      status: 'accepted',
       acceptedAt: project.records[7].time,
       via: scribe.id,
     },
@@ -496,6 +497,17 @@ test('agent credentials can only read their projects, store bytes, and submit co
   assert.equal((await w.hub.getBundle(scribe.auth, w.pid)).records.length, 4);
   assert.equal(fromUtf8(await w.hub.getBlob(scribe.auth, w.pid, w.terms.digest)), CHARTER);
   assert.equal((await w.hub.putBlob(scribe.auth, w.pid, utf8('draft'))).size, 5);
+});
+
+test('an agent keeps reading and storing in its project with no delegation or after revocation, as the browser discloses', async (t) => {
+  // web/actions.mjs NOMINATION_NOTE and DELEGATION_NOTE describe this access;
+  // if hub policy 8 changes, those texts must change with it.
+  const w = await setup(t, 'delegated');
+  await append(w, w.ben, 'delegation.revoked', { delegation: w.delegation, reason: 'Synthetic revocation.' });
+  const later = await w.hub.putBlob(w.ada.auth, w.pid, utf8('Text stored after the revocation (synthetic).\n'));
+  assert.equal((await w.hub.getProject(w.scribe.auth, w.pid)).state.delegations[0].revoked, true);
+  assert.equal(fromUtf8(await w.hub.getBlob(w.scribe.auth, w.pid, later.digest)), 'Text stored after the revocation (synthetic).\n');
+  assert.equal((await w.hub.putBlob(w.scribe.auth, w.pid, utf8('upload after revocation'))).size, 23);
 });
 
 // --- Profiles and briefs (hub policy 9) ----------------------------------------------------
@@ -732,6 +744,32 @@ test('only team members nominate, only their own agents, and only before the rec
   await refuses(w.hub.decideInterest(w.ada.auth, w.interest.id, { decision: 'accept' }), 'conflict');
 });
 
+test('everyone who sees a brief sees whether its record started; only its team still lists it then', async (t) => {
+  const w = await world(t);
+  w.ada = await registerPerson(w, 'Ada');
+  w.ben = await registerPerson(w, 'Ben');
+  const cara = await registerPerson(w, 'Cara');
+  await w.hub.updateProfile(cara.auth, { skills: ['testing'] });
+  const roles = [...BRIEF.roles, { title: 'Reviewer', skills: ['testing'], commitment: 'One evening' }];
+  w.brief = await w.hub.publishBrief(w.ada.auth, { ...BRIEF, roles });
+  const interest = await w.hub.expressInterest(w.ben.auth, w.brief.id, { role: 'r1' });
+  await w.hub.decideInterest(w.ada.auth, interest.id, { decision: 'accept' });
+  const listed = async (who) => (await w.hub.listBriefs(who.auth)).filter((b) => b.id === w.brief.id);
+  assert.equal((await w.hub.getBrief(cara.auth, w.brief.id)).started, false);
+  assert.deepEqual((await listed(cara)).map((b) => [b.status, b.started]), [['open', false]]);
+
+  // The brief is still open and listed, with the Reviewer role unfilled, when the record starts.
+  await startRecord(w);
+  const outside = await w.hub.getBrief(cara.auth, w.brief.id);
+  assert.deepEqual([outside.status, outside.started, outside.project, outside.roles[1].open], ['open', true, undefined, true]);
+  assert.deepEqual(await listed(cara), [], 'an outsider no longer finds a brief nobody can join');
+  assert.ok(!(await w.hub.suggestions(cara.auth)).some((s) => s.brief.id === w.brief.id));
+  await refuses(w.hub.expressInterest(cara.auth, w.brief.id, { role: 'r2' }), 'conflict');
+  for (const member of [w.ada, w.ben]) {
+    assert.deepEqual((await listed(member)).map((b) => [b.started, b.project]), [[true, w.pid]], 'the team still lists its own brief');
+  }
+});
+
 // --- Starting the record (hub policy 4) -----------------------------------------------------
 
 test('a project needs at least two people on the team', async (t) => {
@@ -948,6 +986,40 @@ test('an expired delegation prevents acceptance', async (t) => {
   await refuses(append(w, w.ada, 'contribution.accepted', { contribution: w.contribution, review: w.review }), 'koinos', { koinosCode: 'authority' });
 });
 
+// Hub policy 10: policy 3 accepts a time up to ten minutes before the hub clock,
+// and Koinos compares the expiry only with that signed time.
+const refusesExpired = (promise) => assert.rejects(promise, (e) => e instanceof HubError && e.code === 'invalid' && e.message === DELEGATION_EXPIRED);
+
+test('once its delegation has expired by the hub clock, a steward cannot accept delegated work with a backdated record', async (t) => {
+  const w = await setup(t, 'reviewed');
+  const expires = Date.parse(w.expires);
+  const accept = await sign(w, w.ada, 'contribution.accepted', { contribution: w.contribution, review: w.review }, { time: new Date(expires - 1).toISOString() });
+  w.now = expires + MIN;
+  await refusesExpired(w.hub.appendRecord(w.ada.auth, w.pid, accept));
+  w.now = expires; // expiry is reached at `expires` itself
+  await refusesExpired(w.hub.appendRecord(w.ada.auth, w.pid, accept));
+  // The same signed record is accepted while the hub clock is before the expiry.
+  w.now = expires - MIN;
+  assert.equal((await w.hub.appendRecord(w.ada.auth, w.pid, accept)).state.contributions[0].status, 'accepted');
+});
+
+test('once its delegation has expired by the hub clock, an agent cannot submit with a backdated record', async (t) => {
+  const w = await setup(t, 'delegated');
+  const expires = Date.parse(w.expires);
+  const stored = await w.hub.putBlob(w.scribe.auth, w.pid, utf8(ARTIFACT));
+  const body = { title: 'Late work', summary: 'Signed just before the expiry.', artifact: { uri: stored.uri, digest: stored.digest }, agreement: w.agreement, delegation: w.delegation };
+  const late = await sign(w, w.scribe, 'contribution.submitted', body, { time: new Date(expires - 1).toISOString() });
+  w.now = expires + 5 * MIN;
+  await refusesExpired(w.hub.appendRecord(w.scribe.auth, w.pid, late));
+  w.now = expires - MIN;
+  assert.equal((await w.hub.appendRecord(w.scribe.auth, w.pid, late)).state.contributions[0].status, 'submitted');
+  // A person's own submission uses no delegation, so the rule does not apply to it.
+  w.now = expires + 5 * MIN;
+  const own = await w.hub.putBlob(w.ben.auth, w.pid, utf8('Ben direct work (synthetic)'));
+  const direct = { ...body, title: 'Direct', artifact: { uri: own.uri, digest: own.digest }, delegation: null };
+  assert.equal((await append(w, w.ben, 'contribution.submitted', direct)).state.contributions[1].principal, w.ben.id);
+});
+
 test('only the steward accepts', async (t) => {
   const w = await setup(t, 'reviewed');
   await refuses(append(w, w.ben, 'contribution.accepted', { contribution: w.contribution, review: w.review }), 'koinos', { koinosCode: 'authority' });
@@ -1080,6 +1152,27 @@ test('credit follows the signed attribution, not a later hub registration of the
   await w.hub.registerAgent(ada.auth, { name: 'scribe', key: scribe.id, nonce: c.nonce, signature: proof });
   assert.deepEqual(await credited(ada), []);
   assert.deepEqual(await credited(ben), [[project, 'W', scribe.id]]);
+});
+
+test('credit keeps accepted work a party later disputed, marked with who disputed it, why and when', async (t) => {
+  const w = await setup(t, 'accepted');
+  const credit = (viewer) => w.hub.credit(viewer.auth, w.ben.id);
+  const [before] = await credit(w.ada);
+  assert.equal(before.status, 'accepted');
+  assert.equal(before.dispute, undefined);
+  const disputed = await append(w, w.ada, 'contribution.disputed', { contribution: w.contribution, reason: 'The tests do not cover halving (synthetic).' });
+  assert.equal(disputed.state.contributions[0].status, 'disputed');
+  for (const viewer of [w.ada, w.ben]) {
+    const items = await credit(viewer);
+    assert.equal(items.length, 1, 'a dispute does not erase the credit');
+    const [item] = items;
+    assert.equal(item.status, 'disputed');
+    assert.equal(item.acceptedAt, before.acceptedAt, 'the acceptance is still in the history');
+    assert.equal(item.via, w.scribe.id);
+    assert.deepEqual(item.dispute, { by: w.ada.id, byName: 'Ada', reason: 'The tests do not cover halving (synthetic).', at: w.iso() });
+  }
+  // Work that was never accepted is still not credit.
+  assert.deepEqual(await w.hub.credit(w.ada.auth, w.ada.id), []);
 });
 
 test('an imported history that only cites a digest cannot read bytes stored for another project', async (t) => {

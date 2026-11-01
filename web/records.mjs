@@ -13,7 +13,8 @@ const PIN_PREFIX = 'exofab.pin.';
 const HEX64 = /^[0-9a-f]{64}$/;
 export const SIGN_ATTEMPTS = 3;
 
-// A refusal decided in this browser, before anything was signed or sent.
+// A refusal shown in this browser in plain words: either decided here before
+// anything was signed or sent, or a known hub refusal restated for the person.
 export class LocalRefusal extends Error {
   constructor(message, options) {
     super(message, options);
@@ -71,11 +72,13 @@ export async function verifyProject(pid, data) {
 //   body(state)    -> the record body, from the freshly verified state
 //   terms(state)   -> terms for confirmSign (agreements), optional
 //   context(state) -> extra nodes for the dialog, optional
+//   beforeSign(state) -> checks again once the person confirms, optional; it
+//                     throws a LocalRefusal when time has run out meanwhile
 // If another record lands first (409), the history is fetched and verified
 // again, the record is rebuilt on the new head, and the person is asked again.
 // Resolves with the hub's {head, count, state} plus the record, or null if the
 // person did not sign.
-export async function signRecord({ hub, identity, pid, kind, body, terms, context, title, onRetry, attempts = SIGN_ATTEMPTS }) {
+export async function signRecord({ hub, identity, pid, kind, body, terms, context, beforeSign, title, onRetry, attempts = SIGN_ATTEMPTS }) {
   for (let attempt = 1; ; attempt++) {
     const data = await hub.getProject(pid);
     const verified = await verifyProject(pid, data);
@@ -95,6 +98,7 @@ export async function signRecord({ hub, identity, pid, kind, body, terms, contex
       context: context ? await context(state) : undefined,
     });
     if (!signed) return null;
+    await beforeSign?.(state);
     const record = await signDraft(draft, identity.privateKey);
     try {
       return { ...(await hub.appendRecord(pid, record)), record };

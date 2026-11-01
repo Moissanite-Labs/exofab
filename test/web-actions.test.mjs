@@ -6,20 +6,30 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Writable } from 'node:stream';
-import { readFile } from 'node:fs/promises';
+import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
 import { existsSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { BUNDLE_FORMAT, createRecord, draftRecord, checkDraft, generateIdentity, niUri, sha256Hex, verifyBundle } from '../src/koinos/index.mjs';
-import { agentProofText as hubAgentProof, personProofText as hubPersonProof } from '../src/hub/hub.mjs';
+import { BUNDLE_FORMAT, createRecord, draftRecord, checkDraft, generateIdentity, niUri, sha256Hex, signText, verifyBundle } from '../src/koinos/index.mjs';
+import { DELEGATION_EXPIRED, Hub, HubError, agentProofText as hubAgentProof, personProofText as hubPersonProof } from '../src/hub/hub.mjs';
+import { FileStore } from '../src/hub/store.mjs';
 import { NO_ECONOMIC_RIGHT as DEMO_NO_ECONOMIC_RIGHT } from '../src/demo.mjs';
 import { main } from '../src/cli.mjs';
 import {
   CLIENT_LIMITS,
+  DELEGATION_NOTE,
+  EXPIRED_DELEGATION,
+  NOMINATION_NOTE,
   NO_ECONOMIC_RIGHT,
+  PARTICIPANT_ACCESS_NOTE,
   agentCommands,
+  canExpressInterest,
   charterTemplate,
   expiryFrom,
+  interestDecision,
+  isExpiredDelegationRefusal,
   parseLines,
   parseSkills,
   previewText,
@@ -28,6 +38,7 @@ import {
   readExpiryDays,
   readProfile,
   readProposal,
+  readSubmission,
 } from '../web/actions.mjs';
 import { agentProofText, personProofText } from '../web/proof.mjs';
 
@@ -81,6 +92,8 @@ const S = J.states;
 const { agreement, grant, contribution, review } = J.ids;
 const actions = (n, me, options = {}) => projectActions(S[n], { me: me.id, ...options });
 const types = (n, me, options) => actions(n, me, options).map((a) => a.type);
+const SUBMIT_BLOCKED = 'Every party must consent to this agreement before work can be submitted under it.';
+const submitBlocked = { type: 'submit', agreement, blocked: SUBMIT_BLOCKED };
 
 // --- What the page offers -------------------------------------------------------------
 
@@ -99,21 +112,22 @@ test('after genesis only the steward may propose', () => {
 });
 
 test('each party is offered consent, then withdrawal', () => {
-  assert.deepEqual(actions(2, ada), [{ type: 'propose' }, { type: 'consent', agreement }]);
-  assert.deepEqual(actions(2, ben), [{ type: 'consent', agreement }]);
-  assert.deepEqual(actions(3, ada), [{ type: 'propose' }, { type: 'withdraw', agreement }]);
-  assert.deepEqual(actions(3, ben), [{ type: 'consent', agreement }]);
+  assert.deepEqual(actions(2, ada), [{ type: 'propose' }, { type: 'consent', agreement }, submitBlocked]);
+  assert.deepEqual(actions(2, ben), [{ type: 'consent', agreement }, submitBlocked]);
+  assert.deepEqual(actions(3, ada), [{ type: 'propose' }, { type: 'withdraw', agreement }, submitBlocked]);
+  assert.deepEqual(actions(3, ben), [{ type: 'consent', agreement }, submitBlocked]);
 });
 
 test('delegation is offered only for my own listed agents, and only once every party consents', () => {
   assert.deepEqual(actions(3, ben, { myAgents: [scribe.id] }), [
     { type: 'consent', agreement },
     { type: 'delegate', agreement, agents: [scribe.id], blocked: 'Every party must consent to this agreement before work can be delegated under it.' },
+    submitBlocked,
   ]);
-  assert.deepEqual(actions(4, ben, { myAgents: [scribe.id] }), [{ type: 'withdraw', agreement }, { type: 'delegate', agreement, agents: [scribe.id] }]);
-  assert.deepEqual(types(4, ben, { myAgents: [] }), ['withdraw'], 'no agents of mine');
-  assert.deepEqual(types(4, ben, { myAgents: [outsider.id] }), ['withdraw'], 'my agent is not a participant');
-  assert.deepEqual(types(4, ada, { myAgents: [] }), ['propose', 'withdraw'], 'scribe is not Ada’s agent');
+  assert.deepEqual(actions(4, ben, { myAgents: [scribe.id] }), [{ type: 'withdraw', agreement }, { type: 'delegate', agreement, agents: [scribe.id] }, { type: 'submit', agreement }]);
+  assert.deepEqual(types(4, ben, { myAgents: [] }), ['withdraw', 'submit'], 'no agents of mine');
+  assert.deepEqual(types(4, ben, { myAgents: [outsider.id] }), ['withdraw', 'submit'], 'my agent is not a participant');
+  assert.deepEqual(types(4, ada, { myAgents: [] }), ['propose', 'withdraw', 'submit'], 'scribe is not Ada’s agent');
 });
 
 test('the grantor may revoke an unrevoked delegation', () => {
@@ -150,14 +164,82 @@ test('the steward may accept citing the latest approving review, unless consent 
 });
 
 test('after acceptance any party may dispute, and nothing else is pending', () => {
-  assert.deepEqual(actions(8, ada), [{ type: 'propose' }, { type: 'withdraw', agreement }, { type: 'dispute', contribution }]);
+  assert.deepEqual(actions(8, ada), [{ type: 'propose' }, { type: 'withdraw', agreement }, { type: 'submit', agreement }, { type: 'dispute', contribution }]);
   assert.deepEqual(actions(8, ben, { myAgents: [scribe.id] }), [
     { type: 'withdraw', agreement },
     { type: 'delegate', agreement, agents: [scribe.id] },
+    { type: 'submit', agreement },
     { type: 'revoke', delegation: grant },
     { type: 'dispute', contribution },
   ]);
 });
+
+test('a party is offered to submit their own work, blocked until every party consents; a non-party is not', async () => {
+  const submits = (state, me) => projectActions(state, { me: me.id }).filter((a) => a.type === 'submit');
+  for (const n of [2, 3]) {
+    assert.deepEqual(submits(S[n], ada), [submitBlocked], `Ada at ${n} records`);
+    assert.deepEqual(submits(S[n], ben), [submitBlocked], `Ben at ${n} records`);
+  }
+  for (const n of [4, 8]) {
+    assert.deepEqual(submits(S[n], ada), [{ type: 'submit', agreement }]);
+    assert.deepEqual(submits(S[n], ben), [{ type: 'submit', agreement }]);
+  }
+  // Ben is a participant but not a party to this agreement, so he cannot submit under it.
+  const adaOnly = structuredClone(S[4]);
+  adaOnly.agreements[0].parties = [ada.id];
+  adaOnly.agreements[0].consents = [ada.id];
+  assert.deepEqual(submits(adaOnly, ben), []);
+  assert.deepEqual(submits(adaOnly, ada), [{ type: 'submit', agreement }]);
+  for (const n of [4, 8]) assert.deepEqual(submits(S[n], scribe), [], 'agents submit with `exofab agent submit`, not here');
+  assert.deepEqual(submits(S[4], outsider), []);
+
+  // What the page offers is what Koinos allows: a party's submission with a null delegation.
+  const artifact = await sha256Hex('Ben’s own work (synthetic)\n');
+  const body = { title: 'Own work', summary: 'Submitted by Ben himself.', artifact: { uri: niUri(artifact), digest: artifact }, agreement, delegation: null };
+  const draftAt = async (n, who) => draftRecord({ records: J.records.slice(0, n), actor: who.id, kind: 'contribution.submitted', body });
+  await checkDraft(J.records.slice(0, 4), await draftAt(4, ben));
+  await checkDraft(J.records.slice(0, 8), await draftAt(8, ada));
+  await assert.rejects(async () => checkDraft(J.records.slice(0, 3), await draftAt(3, ben)), /currently consent/);
+});
+
+test('readSubmission needs a title, a summary and a file of at most 4 MiB', () => {
+  assert.deepEqual(readSubmission({ title: ' Own work ', summary: ' What and why. ', size: 12 }), { title: 'Own work', summary: 'What and why.' });
+  assert.deepEqual(readSubmission({ title: 'Empty file', summary: 'Zero bytes.', size: 0 }), { title: 'Empty file', summary: 'Zero bytes.' });
+  assert.equal(readSubmission({ title: 'Max', summary: 'S.', size: CLIENT_LIMITS.artifactBytes }).title, 'Max');
+  assert.throws(() => readSubmission({ title: 'Big', summary: 'S.', size: CLIENT_LIMITS.artifactBytes + 1 }), /at most 4194304 bytes/);
+  assert.throws(() => readSubmission({ title: 'No file', summary: 'S.', size: null }), /Choose the artifact file/);
+  assert.throws(() => readSubmission({ title: ' ', summary: 'S.', size: 1 }), /Title cannot be empty/);
+  assert.throws(() => readSubmission({ title: 'T', summary: '', size: 1 }), /Summary cannot be empty/);
+  assert.throws(() => readSubmission({ title: 'T\u0007', summary: 'S.', size: 1 }), /control characters/);
+  assert.equal(CLIENT_LIMITS.artifactBytes, 4 * 1024 * 1024, 'the hub’s limit on stored bytes');
+});
+
+test('the page shows the hub’s expired-delegation refusal as the expired message', () => {
+  // What the browser's HubHttpError carries: the status and the hub's JSON error.
+  const refusal = { status: 422, ...new HubError('invalid', DELEGATION_EXPIRED).toJSON() };
+  assert.equal(isExpiredDelegationRefusal(refusal), true);
+  assert.equal(isExpiredDelegationRefusal({ ...refusal, status: 400 }), false);
+  assert.equal(isExpiredDelegationRefusal({ ...refusal, code: 'koinos' }), false);
+  assert.equal(isExpiredDelegationRefusal({ status: 422, code: 'invalid', message: 'Record time must be within ten minutes' }), false);
+  assert.equal(isExpiredDelegationRefusal(null), false);
+  // The same words as the blocked accept action.
+  const accept = projectActions(S[7], { me: ada.id, now: Date.parse(J.expires) }).find((a) => a.type === 'accept');
+  assert.equal(accept.blocked, EXPIRED_DELEGATION);
+});
+
+test('what the page says an agent participant can do matches hub policy 8, and no text says “nothing else”', async () => {
+  for (const text of [NOMINATION_NOTE, DELEGATION_NOTE]) assert.match(text, /read every record and stored file of (?:the|this) project and store files in it/);
+  assert.match(NOMINATION_NOTE, /with or without a delegation/);
+  assert.match(NOMINATION_NOTE, /no way to remove it or revoke its credential/);
+  assert.match(DELEGATION_NOTE, /Revoking or letting the delegation expire does not change that/);
+  assert.match(PARTICIPANT_ACCESS_NOTE, /Every listed participant, including agents, can read all records and stored files/);
+  const sources = Object.fromEntries(await Promise.all(['views-project.mjs', 'views-brief.mjs'].map(async (f) => [f, await readFile(join(ROOT, 'web', f), 'utf8')])));
+  for (const [file, source] of Object.entries(sources)) assert.doesNotMatch(source, /and nothing else/, file);
+  assert.match(sources['views-project.mjs'], /description: DELEGATION_NOTE,/);
+  assert.match(sources['views-brief.mjs'], /message: NOMINATION_NOTE,/);
+  assert.match(sources['views-brief.mjs'], /You become the steward\. \$\{PARTICIPANT_ACCESS_NOTE\}/);
+});
+
 
 // --- Charter ------------------------------------------------------------------------
 
@@ -267,12 +349,17 @@ test('the agent commands shown on the profile page run from a checkout, read tok
   const text = agentCommands(hub);
   const lines = text.split('\n').filter((line) => line !== '' && !line.startsWith('#'));
   // Commands name the entry point in the checkout, not an `exofab` that nothing puts on PATH.
-  const commands = lines.filter((line) => line.startsWith('node src/cli.mjs '));
+  const commands = lines.map((line) => /node src\/cli\.mjs [^)]*?(?= \)$|$)/.exec(line)?.[0]).filter(Boolean);
   assert.ok(existsSync(join(ROOT, 'src', 'cli.mjs')));
   assert.equal(commands.length, 3);
   assert.ok(commands.includes(`node src/cli.mjs agent register --name scribe --key scribe.pem --hub ${hub}`));
+  // The person's token is read and exported only inside a subshell that runs
+  // the register command, so it never stays in the shell the agent runs from.
+  const register = lines.filter((line) => line.includes('EXOFAB_TOKEN'));
+  assert.deepEqual(register, [`( read -rs EXOFAB_TOKEN && export EXOFAB_TOKEN && node src/cli.mjs agent register --name scribe --key scribe.pem --hub ${hub} )`]);
+  for (const line of lines.filter((l) => !l.startsWith('( '))) assert.doesNotMatch(line, /\bEXOFAB_TOKEN\b/, `top-level line touches the person's token: ${line}`);
   // Tokens are read at a silent prompt, never typed inline where shell history keeps them.
-  for (const line of lines.filter((l) => !commands.includes(l))) assert.match(line, /^read -rs (EXOFAB_(?:AGENT_)?TOKEN) && export \1$/);
+  for (const line of lines.filter((l) => !l.startsWith('node src/cli.mjs ') && !l.startsWith('( '))) assert.match(line, /^read -rs EXOFAB_AGENT_TOKEN && export EXOFAB_AGENT_TOKEN$/);
   assert.doesNotMatch(text, /EXOFAB_(AGENT_)?TOKEN=/);
   for (const command of commands.filter((c) => c.includes(' agent '))) {
     // Without the token variable, a command whose options all parse stops at the token check.
@@ -282,6 +369,28 @@ test('the agent commands shown on the profile page run from a checkout, read tok
     assert.equal(status, 2, command);
     assert.match(stderr.text(), /Set EXOFAB_(AGENT_)?TOKEN in the environment/, command);
   }
+});
+
+test('run in bash, the agent commands give the person’s token to the register command only', (t) => {
+  // `node` is replaced by a shell function that reports which tokens it sees;
+  // a later child process stands in for anything the agent's runtime starts.
+  const script = [
+    'node() { printf "%s|%s|%s\\n" "$2 $3" "${EXOFAB_TOKEN-unset}" "${EXOFAB_AGENT_TOKEN-unset}"; }',
+    agentCommands('http://127.0.0.1:4317'),
+    'bash -c \'printf "child|%s\\n" "${EXOFAB_TOKEN-unset}"\'',
+  ].join('\n');
+  const run = spawnSync('bash', ['-c', script], { input: 'exf_person_synthetic\nexf_agent_synthetic\n', encoding: 'utf8', env: { PATH: process.env.PATH } });
+  if (run.error?.code === 'ENOENT') {
+    t.skip('bash is not available, so the token-scoping check did not run; the static checks above did');
+    return;
+  }
+  assert.equal(run.status, 0, run.stderr);
+  assert.deepEqual(run.stdout.trim().split('\n'), [
+    'keygen scribe.pem|unset|unset',
+    'agent register|exf_person_synthetic|unset',
+    'agent submit|unset|exf_agent_synthetic',
+    'child|unset',
+  ]);
 });
 
 test('the withdraw-consent text names every effect Koinos gives withdrawal', async () => {
@@ -301,4 +410,59 @@ test('the withdraw-consent text names every effect Koinos gives withdrawal', asy
   const copy = /withdraw: \(ctx, item\) => \{[\s\S]*?text: `([^`]*)`/.exec(source)?.[1];
   assert.ok(copy, 'withdraw action text not found');
   for (const effect of ['delegations', 'submissions', 'acceptances', 'your agent']) assert.ok(copy.includes(effect), `withdraw text omits ${effect}: ${copy}`);
+});
+
+// --- Briefs: the page offers only what the hub allows ----------------------------------------
+
+test('the brief page offers Accept and Express interest only when the hub allows them, and says why not', async (t) => {
+  const dir = await mkdtemp(join(tmpdir(), 'exofab-web-actions-'));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  const hub = new Hub({ store: new FileStore(dir) });
+  const person = async (name) => {
+    const identity = await generateIdentity();
+    const { nonce } = await hub.challenge();
+    const { token } = await hub.registerPerson({ name, key: identity.id, nonce, signature: await signText(identity.privateKey, hubPersonProof(nonce, identity.id)) });
+    return { identity, id: identity.id, auth: await hub.authenticate(token) };
+  };
+  const [owner, ben, cara, dan] = [await person('Ada'), await person('Ben'), await person('Cara'), await person('Dan')];
+  const roles = [
+    { title: 'Skill builder', skills: ['exo-skills'], commitment: 'A few evenings' },
+    { title: 'Reviewer', skills: ['testing'], commitment: 'One evening' },
+  ];
+  const { id } = await hub.publishBrief(owner.auth, { title: 'Recipe scaler (synthetic)', summary: 'Synthetic.', compensation: 'None offered.', roles, listed: true });
+  const view = (who) => hub.getBrief(who.auth, id);
+  const offers = async (who, interest) => interestDecision(interest, await view(owner));
+  // Each refused case: the page does not offer Accept, and the hub refuses it.
+  const refusedLike = async (interest, reason) => {
+    assert.deepEqual(await offers(owner, interest), { accept: false, reason });
+    await assert.rejects(hub.decideInterest(owner.auth, interest.id, { decision: 'accept' }), (e) => e.code === 'conflict');
+  };
+
+  const fromBen = await hub.expressInterest(ben.auth, id, { role: 'r1' });
+  const fromCara = await hub.expressInterest(cara.auth, id, { role: 'r1' });
+  const forReview = await hub.expressInterest(dan.auth, id, { role: 'r2' });
+  assert.deepEqual(await offers(owner, fromBen), { accept: true });
+  await hub.decideInterest(owner.auth, fromBen.id, { decision: 'accept' });
+  await refusedLike(fromCara, 'This role is already filled.');
+  await hub.updateBrief(owner.auth, id, { status: 'closed' });
+  await refusedLike(forReview, 'Reopen the brief to accept anyone.');
+  await hub.updateBrief(owner.auth, id, { status: 'open' });
+
+  // An outsider may express interest in the open Reviewer role until the record starts.
+  const eve = await person('Eve');
+  assert.equal(canExpressInterest(await view(eve)), true);
+  assert.equal(canExpressInterest(await view(owner), { isOwner: true }), false);
+  assert.equal(canExpressInterest(await view(ben), { isMember: true }), false);
+  const { project, body } = await hub.genesisDraft(owner.auth, id);
+  const genesis = await createRecord({ records: [], identity: owner.identity, kind: 'project.created', body, project });
+  await hub.startProject(owner.auth, id, genesis);
+  const outside = await view(eve);
+  assert.equal(outside.project, undefined, 'the project id is for the team only');
+  assert.equal(outside.roles[1].open, true);
+  assert.equal(canExpressInterest(outside), false, 'the page no longer offers Express interest');
+  await assert.rejects(hub.expressInterest(eve.auth, id, { role: 'r2' }), (e) => e.code === 'conflict');
+  await refusedLike(forReview, 'The record has started, so its participants are fixed.');
+  // Declining stays possible, so the owner can clear interests that can no longer be met.
+  assert.equal((await hub.decideInterest(owner.auth, forReview.id, { decision: 'decline' })).status, 'declined');
+  assert.equal((await hub.decideInterest(owner.auth, fromCara.id, { decision: 'decline' })).status, 'declined');
 });

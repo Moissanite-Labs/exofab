@@ -4,6 +4,7 @@
 
 import { readFile, stat } from 'node:fs/promises';
 import { inspectExport, MAX_EXPORT_BYTES, SynbiosError, taskFromCharter } from './adapters/synbios.mjs';
+import { safe } from './display.mjs';
 
 const USAGE = `Usage:
   exofab synbios task --project KOINOS_PROJECT --agreement AGREEMENT_ID --terms-digest SHA256
@@ -49,14 +50,12 @@ function parseOptions(argv, { single, multi }) {
   return options;
 }
 
-// Export text is untrusted. JSON.stringify already escapes C0 controls; also
-// escape C1 controls and bidirectional or line-separator characters so the
-// output cannot drive or reorder a terminal display. The result is still JSON.
+// Export text is untrusted. JSON.stringify already escapes C0 controls; safe()
+// also escapes C1 controls and bidirectional or line-separator characters so
+// the output cannot drive or reorder a terminal display. The result is still
+// JSON. Error messages can quote export text too, so they pass through safe().
 function displayJson(value) {
-  return `${JSON.stringify(value, null, 2).replace(
-    /[\u007f-\u009f\u200e\u200f\u202a-\u202e\u2066-\u2069\u2028\u2029\u061c]/g,
-    (char) => `\\u${char.charCodeAt(0).toString(16).padStart(4, '0')}`,
-  )}\n`;
+  return `${safe(JSON.stringify(value, null, 2))}\n`;
 }
 
 function taskCommand(argv, stdout) {
@@ -113,11 +112,11 @@ export async function synbiosCommand(argv, { stdout = process.stdout, stderr = p
     throw new UsageError(subcommand === undefined ? 'missing subcommand' : 'unknown subcommand');
   } catch (error) {
     if (error instanceof UsageError) {
-      stderr.write(`exofab synbios: ${error.message}\n${USAGE}`);
+      stderr.write(`exofab synbios: ${safe(error.message)}\n${USAGE}`);
       return 2;
     }
     if (error instanceof SynbiosError) {
-      stderr.write(`exofab synbios: ${error.message}\n`);
+      stderr.write(`exofab synbios: ${safe(error.message)}\n`);
       return 1;
     }
     throw error;

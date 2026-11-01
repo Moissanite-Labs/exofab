@@ -2,11 +2,13 @@
 // with ExofabClient against a hub on 127.0.0.1 with a fresh data directory.
 // Every person, agent, brief, charter and artifact here is fictional.
 //
-// Keys: Ada's and Ben's are generated in memory, non-extractable, as a browser
-// would keep them. Scribe's key belongs to the agent's runtime, so it is
-// written as a PKCS#8 PEM (mode 0600) to a temporary directory, loaded back,
-// and that directory is removed at the end. The hub only ever receives
-// public keys, proofs and signed records.
+// Keys: this process plays the fictional people Ada and Ben, so it signs as
+// them. Their keys are generated in memory for this run, non-extractable,
+// standing in for keys a browser would keep; no other command signs as a
+// person. Scribe's key belongs to the agent's runtime, so it is written as a
+// PKCS#8 PEM (mode 0600) to a temporary directory, loaded back, and that
+// directory is removed at the end. The hub only ever receives public keys,
+// proofs and signed records.
 import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -15,7 +17,7 @@ import { FileStore } from './hub/store.mjs';
 import { Hub } from './hub/hub.mjs';
 import { createServer } from './server.mjs';
 import { ExofabClient } from './client.mjs';
-import { referencedDigests, verifyExport, writeExport } from './export.mjs';
+import { assertExportTarget, referencedDigests, verifyExport, writeExport } from './export.mjs';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const TEXT = 'text/plain; charset=utf-8';
@@ -86,6 +88,9 @@ async function fetchChecked(client, pid, digest, label) {
 // to outDir verifies from disk.
 export async function runDemo({ dataDir, outDir, log = (line) => process.stdout.write(`${line}\n`) } = {}) {
   if (typeof dataDir !== 'string' || typeof outDir !== 'string') throw new TypeError('runDemo needs dataDir and outDir');
+  // Both directories are checked before any work, so a bad --out or --data
+  // fails at once instead of after the whole journey.
+  await assertExportTarget(outDir);
   await freshDirectory(dataDir);
   const keyDir = await mkdtemp(join(tmpdir(), 'exofab-demo-agent-'));
   const server = await createServer({ hub: new Hub({ store: new FileStore(dataDir) }), port: 0, log });

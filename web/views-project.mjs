@@ -7,11 +7,24 @@ import { sha256Hex, niUri } from '/lib/koinos/crypto.mjs';
 import { h, section, emptyState, facts, field, idCode, mono, notice, renderState, renderTimeline, saveFile } from './render.mjs';
 import { href } from './routes.mjs';
 import { namesFromState, nameOf, revealHidden, shortId, termsFromBytes } from './format.mjs';
-import { formDialog, promptText } from './dialog.mjs';
-import { CLIENT_LIMITS, DELEGATION_SCOPE, charterTemplate, expiryFrom, previewText, projectActions, readExpiryDays, readProposal } from './actions.mjs';
+import { formDialog, promptText, viewTerms } from './dialog.mjs';
+import {
+  CLIENT_LIMITS,
+  DELEGATION_NOTE,
+  DELEGATION_SCOPE,
+  EXPIRED_DELEGATION,
+  charterTemplate,
+  expiryFrom,
+  isExpiredDelegationRefusal,
+  previewText,
+  projectActions,
+  readExpiryDays,
+  readProposal,
+  readSubmission,
+} from './actions.mjs';
 import { LocalRefusal, bundleFile, signRecord, verifyProject } from './records.mjs';
-import { TEXT_TYPE } from './api.mjs';
-import { announce, pageHead, problem, list, str, needIdentity, needRegistration, hubFor, actionButton, prose, refreshButton } from './shell.mjs';
+import { HubHttpError, TEXT_TYPE } from './api.mjs';
+import { announce, pageHead, problem, list, str, needIdentity, needRegistration, hubFor, act, actionButton, prose, refreshButton } from './shell.mjs';
 
 const quoted = (text) => `“${str(text, 'untitled', 120)}”`;
 
@@ -113,8 +126,7 @@ async function delegate(ctx, item) {
   const { minExpiryDays: min, maxExpiryDays: max, defaultExpiryDays } = CLIENT_LIMITS;
   const value = await formDialog({
     title: `Delegate under ${title}`,
-    description:
-      'Your agent will be able to submit contributions under this agreement until the expiry, and nothing else. You remain its responsible principal and can revoke the delegation at any time. A contribution whose delegation expires or is revoked before acceptance can never be accepted.',
+    description: DELEGATION_NOTE,
     submitLabel: 'Review the record',
     content: [
       h('div', { class: 'field' }, h('label', { for: 'delegate-agent' }, 'Agent'), h('select', { class: 'input', id: 'delegate-agent', name: 'agent' }, item.agents.map((id) => h('option', { value: id }, nameOf(id, ctx.names))))),
@@ -141,6 +153,57 @@ async function delegate(ctx, item) {
     body: () => ({ agent: value.agent, agreement: item.agreement, scope: [DELEGATION_SCOPE], expires: expiryFrom(value.days) }),
   });
   if (result) announce(`${nameOf(value.agent, ctx.names)} may now submit contributions under ${title}.`, 'ok');
+}
+
+// A party submits their own work: no delegation, so they are its principal.
+// The exact file bytes are stored first and the record cites their digest.
+async function submit(ctx, item) {
+  const title = quoted(find(ctx.state, 'agreements', item.agreement, 'agreement').title);
+  const value = await formDialog({
+    title: `Submit your own work under ${title}`,
+    description:
+      'The exact bytes of the file are stored on the hub by their SHA-256 digest, and your record cites that digest. A party who is not you reviews those bytes before the steward can accept the contribution.',
+    submitLabel: 'Store the file and review the record',
+    content: [
+      field({ label: 'Contribution title', name: 'title', maxlength: CLIENT_LIMITS.title, autocomplete: 'off' }),
+      field({ label: 'Summary', name: 'summary', multiline: true, rows: 3, hint: 'What the work is and how it meets the agreement. Recorded in the project history; every participant can read it.' }),
+      h(
+        'div',
+        { class: 'field' },
+        h('label', { for: 'submit-artifact' }, 'Artifact file'),
+        h('input', { class: 'input', id: 'submit-artifact', name: 'artifact', type: 'file', 'aria-describedby': 'submit-artifact-hint' }),
+        h('p', { class: 'hint', id: 'submit-artifact-hint' }, 'At most 4 MiB. Its exact bytes are what the reviewer reads and what the record cites.'),
+      ),
+    ],
+    read: async (form) => {
+      const data = new FormData(form);
+      const chosen = data.get('artifact');
+      const file = chosen instanceof File && chosen.name !== '' ? chosen : null;
+      const fields = readSubmission({ title: data.get('title'), summary: data.get('summary'), size: file ? file.size : null });
+      const bytes = new Uint8Array(await file.arrayBuffer());
+      if (bytes.length > CLIENT_LIMITS.artifactBytes) throw new Error('The artifact file is larger than 4 MiB.');
+      const digest = await sha256Hex(bytes);
+      const stored = await ctx.hub.putBlob(ctx.pid, bytes, 'application/octet-stream');
+      if (stored?.digest !== digest || stored?.uri !== niUri(digest)) {
+        throw new Error('The hub reported a different digest for the stored file, so nothing will be signed.');
+      }
+      return { ...fields, digest, uri: niUri(digest), file: file.name, size: bytes.length };
+    },
+  });
+  if (!value) return;
+  const result = await sign(ctx, {
+    kind: 'contribution.submitted',
+    title: `Submit ${quoted(value.title)}`,
+    body: (state) => ({
+      title: value.title,
+      summary: value.summary,
+      artifact: { uri: value.uri, digest: value.digest },
+      agreement: find(state, 'agreements', item.agreement, 'agreement').id,
+      delegation: null,
+    }),
+    context: () => [facts([['File', str(value.file, 'chosen file', 200)], ['Size', `${value.size} bytes`], ['Artifact digest, computed by this browser', mono(value.digest)]], 'facts-ok')],
+  });
+  if (result) announce(`You submitted ${quoted(value.title)}. A party who is not you must review it before the steward can accept it.`, 'ok');
 }
 
 async function revoke(ctx, item) {
@@ -189,7 +252,7 @@ async function review(ctx, item) {
         ? notice('The SHA-256 digest computed by this browser from the stored bytes equals the digest in the record.', 'ok')
         : notice('The stored bytes do not match the digest in the record. Do not review them: they are not what was submitted. Reviewing is disabled.', 'danger'),
       previewNodes(previewText(bytes)),
-      h('div', { class: 'btn-row' }, h('button', { type: 'button', class: 'btn btn-small', on: { click: () => saveFile(bytes, `artifact-${computed}`, 'application/octet-stream') } }, 'Download the exact bytes')),
+      h('div', { class: 'btn-row' }, h('button', { type: 'button', class: 'btn btn-small', on: { click: () => saveFile(bytes, computed, 'application/octet-stream') } }, 'Download the exact bytes')),
       match
         ? [
             h(
@@ -229,15 +292,36 @@ function latestApproval(state, id) {
   return { c, latest };
 }
 
+// The delegation must still be active when the steward signs, by this
+// browser's clock; the hub checks it again by its own (hub policy 10).
+function refuseIfGrantExpired(state, id) {
+  const c = find(state, 'contributions', id, 'contribution');
+  const d = c.delegation === null ? null : list(state.delegations).find((x) => x.id === c.delegation);
+  if (d && !(Date.parse(d.expires) > Date.now())) throw new LocalRefusal(EXPIRED_DELEGATION);
+}
+
 async function accept(ctx, item) {
   const title = quoted(find(ctx.state, 'contributions', item.contribution, 'contribution').title);
-  const result = await sign(ctx, {
+  let result;
+  try {
+    result = await signAcceptance(ctx, item, title);
+  } catch (error) {
+    if (isExpiredDelegationRefusal(error)) throw new LocalRefusal(EXPIRED_DELEGATION, { cause: error });
+    throw error;
+  }
+  if (result) announce(`You accepted ${title}. It is now recorded as credit.`, 'ok');
+}
+
+function signAcceptance(ctx, item, title) {
+  return sign(ctx, {
     kind: 'contribution.accepted',
     title: `Accept ${title}`,
     body: (state) => {
+      refuseIfGrantExpired(state, item.contribution);
       const { c, latest } = latestApproval(state, item.contribution);
       return { contribution: c.id, review: latest.id };
     },
+    beforeSign: (state) => refuseIfGrantExpired(state, item.contribution),
     context: (state) => {
       const { latest } = latestApproval(state, item.contribution);
       return [
@@ -251,7 +335,6 @@ async function accept(ctx, item) {
       ];
     },
   });
-  if (result) announce(`You accepted ${title}. It is now recorded as credit.`, 'ok');
 }
 
 async function dispute(ctx, item) {
@@ -259,13 +342,60 @@ async function dispute(ctx, item) {
   const reason = await reasonPrompt(`Dispute the acceptance of ${title}`);
   if (reason === null) return;
   const result = await sign(ctx, { kind: 'contribution.disputed', title: `Dispute ${title}`, body: () => ({ contribution: item.contribution, reason }) });
-  if (result) announce(`You disputed the acceptance of ${title}.`, 'ok');
+  if (result) announce(`You disputed the acceptance of ${title}. It stays in the record and in its principal’s credit, marked as disputed with your reason.`, 'ok');
+}
+
+// Stored bytes for a digest this project's records cite, checked here.
+async function fetchCited(ctx, digest, what) {
+  let bytes;
+  try {
+    bytes = await ctx.hub.getBlob(ctx.pid, digest);
+  } catch (error) {
+    if (error instanceof HubHttpError && error.status === 404) {
+      throw new LocalRefusal(
+        `The hub holds no ${what} bytes with this digest for this project, so they cannot be shown or saved here. ` +
+          'A project imported without its cited files (exofab import --blobs) has only its records.',
+        { cause: error },
+      );
+    }
+    throw error;
+  }
+  return { bytes, computed: await sha256Hex(bytes) };
+}
+
+// Saves cited bytes under their bare hex digest, the name
+// "node src/cli.mjs verify BUNDLE --blobs DIR" looks for, after checking that
+// their SHA-256 equals the digest in the record.
+async function downloadCited(ctx, { digest, what, title }) {
+  const { bytes, computed } = await fetchCited(ctx, digest, what);
+  if (computed !== digest) throw new LocalRefusal(`The hub sent ${what} bytes that do not match the digest in the record, so nothing was saved.`);
+  saveFile(bytes, digest, 'application/octet-stream');
+  announce(`Saved the ${what} of ${quoted(title)} as ${digest}, its SHA-256 digest, checked in this browser. Put it in a folder named blobs next to the bundle to verify both offline.`, 'ok');
+}
+
+// Any participant can read an agreement's exact terms, read only.
+async function readTerms(ctx, id) {
+  const a = find(ctx.state, 'agreements', id, 'agreement');
+  const { bytes } = await fetchCited(ctx, a.digest, 'terms');
+  const me = ctx.identity.id;
+  const yours = !list(a.parties).includes(me) ? 'You are not a party' : list(a.consents).includes(me) ? 'Given' : 'Not given';
+  await viewTerms({
+    title: `Terms of ${quoted(a.title)}`,
+    terms: await termsFromBytes(bytes, a.digest),
+    facts: [['Parties', list(a.parties).map((p) => nameOf(p, ctx.names)).join(', ')], ['Your consent', yours]],
+  });
 }
 
 async function downloadBundle(ctx) {
   const { bytes, state } = await bundleFile(ctx.hub, ctx.pid);
-  saveFile(bytes, `exofab-${ctx.pid}.bundle.json`, 'application/json');
-  announce(`Saved the bundle (${state.count} records, verified in this browser, head ${state.head}). Anyone can verify it offline with "node src/cli.mjs verify" from an Exofab checkout.`, 'ok');
+  const name = `exofab-${ctx.pid}.bundle.json`;
+  saveFile(bytes, name, 'application/json');
+  announce(
+    `Saved the bundle (${state.count} records, verified in this browser, head ${state.head}). It holds the signed records only. ` +
+      'Save the cited terms and artifacts with their Download buttons, into a folder named blobs next to it; then anyone can verify both offline with ' +
+      `"node src/cli.mjs verify ${name} --blobs blobs" from an Exofab checkout. "exofab export" writes both at once on the machine that holds the hub's data.`,
+    'ok',
+  );
 }
 
 // --- Actions panel -----------------------------------------------------------------------
@@ -301,6 +431,14 @@ const ACTIONS = {
       run: () => delegate(ctx, item),
     };
   },
+  submit: (ctx, item) => {
+    const title = quoted(find(ctx.state, 'agreements', item.agreement, 'agreement').title);
+    return {
+      label: `Submit my own work under ${title}`,
+      text: `As a party to ${title}, submit a contribution yourself. A party who is not you reviews its exact bytes before the steward can accept it.`,
+      run: () => submit(ctx, item),
+    };
+  },
   revoke: (ctx, item) => {
     const d = find(ctx.state, 'delegations', item.delegation, 'delegation');
     const agent = nameOf(d.agent, ctx.names);
@@ -316,7 +454,11 @@ const ACTIONS = {
   },
   dispute: (ctx, item) => {
     const title = quoted(find(ctx.state, 'contributions', item.contribution, 'contribution').title);
-    return { label: `Dispute ${title}`, text: `${title} is accepted. If you disagree, record a dispute with your reason.`, run: () => dispute(ctx, item) };
+    return {
+      label: `Dispute ${title}`,
+      text: `${title} is accepted. If you disagree, record a dispute with your reason. The contribution stays in its principal’s credit, marked as disputed by you, with your reason.`,
+      run: () => dispute(ctx, item),
+    };
   },
 };
 
@@ -384,7 +526,20 @@ export async function projectView({ params, identity }) {
       pageHead(str(state.project.title, 'Untitled project', 256), 'Koinos record of this project. Its records and stored bytes are visible only to its participants.', refreshButton(), brief, download),
       verifiedIndicator(state),
       actionsPanel(ctx),
-      h('div', { class: 'split' }, h('div', {}, renderState(state, { namesById: ctx.names })), section('Record', renderTimeline(data.records, ctx.names))),
+      h(
+        'div',
+        { class: 'split' },
+        h(
+          'div',
+          {},
+          renderState(state, {
+            namesById: ctx.names,
+            onReadTerms: (id, button) => act(button, () => readTerms(ctx, id), { redraw: false }),
+            onDownload: (cited, button) => act(button, () => downloadCited(ctx, cited), { redraw: false }),
+          }),
+        ),
+        section('Record', renderTimeline(data.records, ctx.names)),
+      ),
     ],
   };
 }

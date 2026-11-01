@@ -10,10 +10,12 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
-import { mkdir, mkdtemp, readFile, rm } from 'node:fs/promises';
+import { copyFile, mkdir, mkdtemp, readFile, rm } from 'node:fs/promises';
+import { Writable } from 'node:stream';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { createServer } from '../src/server.mjs';
+import { main } from '../src/cli.mjs';
 import { ExofabClient } from '../src/client.mjs';
 import { FileStore } from '../src/hub/store.mjs';
 import { Hub } from '../src/hub/hub.mjs';
@@ -39,6 +41,8 @@ const BRIEF = {
   role: 'Skill builder',
 };
 const CONTRIBUTION = 'recipe-scale skill v1 (synthetic)';
+const OWN_WORK = 'Ben’s scaling notes (synthetic)';
+const OWN_BYTES = 'Notes on rounding rules for halved recipes. Synthetic.\n';
 const ARTIFACT = `# recipe-scale (synthetic demonstration skill)
 
 Scales the ingredient amounts of a recipe by a factor.
@@ -88,6 +92,14 @@ const tamper = (page) =>
     const body = Buffer.concat([await response.body(), Buffer.from('Payment: 100 tokens.\n')]);
     await route.fulfill({ status: 200, contentType: 'application/octet-stream', body });
   });
+
+// Clicks a button that saves a file; resolves {name, text} of the saved file.
+async function saved(page, name) {
+  const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name, exact: true }).click()]);
+  return { name: download.suggestedFilename(), path: await download.path(), text: await readFile(await download.path(), 'utf8') };
+}
+
+const sink = () => new Writable({ write: (_chunk, _encoding, done) => done() });
 
 // The one open dialog.
 const dialog = (page) => page.locator('dialog[open]');
@@ -392,7 +404,66 @@ test('web client: two people and an agent complete the first-slice journey in th
     const credit = ben.locator('section', { has: ben.getByRole('heading', { name: 'My credit' }) });
     assert.match(await credit.textContent(), new RegExp(`${CONTRIBUTION.replace(/[()]/g, '\\$&')}.*Submitted by agentscribe`));
 
-    // 15. At phone width neither page scrolls sideways (Ada: project, Ben: profile).
+    // 15. Ben, the principal (who may not review), saves the cited bytes from the
+    //     project page. Each file is named by its digest, so the downloaded
+    //     bundle and files verify offline with --blobs.
+    await go(ben, `#/project/${encodeURIComponent(pid)}`, 'project');
+    const artifactFile = await saved(ben, `Download the artifact of “${CONTRIBUTION}”`);
+    assert.deepEqual([artifactFile.name, artifactFile.text], [await sha256Hex(ARTIFACT), ARTIFACT]);
+    const termsFile = await saved(ben, 'Download the terms of “Charter”');
+    assert.deepEqual([termsFile.name, termsFile.text], [await sha256Hex(charterText), charterText]);
+    const bundleFile = await saved(ben, 'Download bundle');
+    assert.equal(bundleFile.name, `exofab-${pid}.bundle.json`);
+    await status(ben, 'It holds the signed records only.');
+    const offline = await mkdtemp(join(tmpdir(), 'exofab-web-e2e-verify-'));
+    t.after(() => rm(offline, { recursive: true, force: true }));
+    await mkdir(join(offline, 'blobs'));
+    await copyFile(bundleFile.path, join(offline, 'bundle.json'));
+    for (const file of [artifactFile, termsFile]) await copyFile(file.path, join(offline, 'blobs', file.name));
+    const offlineStatus = await main(['verify', join(offline, 'bundle.json'), '--blobs', join(offline, 'blobs'), '--expect-head', head, '--expect-project', pid], { stdout: sink(), stderr: sink(), env: {} });
+    assert.equal(offlineStatus, 0, 'the downloaded bundle and cited files verify with --blobs');
+
+    // 16. Having consented, Ben can still read the exact terms, read only.
+    await ben.getByRole('button', { name: 'Read the terms of “Charter”' }).click();
+    assert.equal(await dialog(ben).getByLabel('Exact terms text', { exact: true }).textContent(), charterText);
+    assert.match(await dialog(ben).textContent(), /Your consent\s*Given/);
+    assert.equal(await dialog(ben).getByRole('button', { name: 'Sign with my key' }).count(), 0, 'nothing to sign');
+    await dialog(ben).getByRole('button', { name: 'Close' }).click();
+
+    // 17. As a party, Ben submits his own work in the browser, with no delegation.
+    await ben.getByRole('button', { name: 'Submit my own work under “Charter”' }).click();
+    const own = dialog(ben);
+    await own.getByLabel('Contribution title', { exact: true }).fill(OWN_WORK);
+    await own.getByLabel('Summary', { exact: true }).fill('Rounding rules for halved recipes. (synthetic)');
+    await own.getByLabel('Artifact file', { exact: true }).setInputFiles({ name: 'notes.txt', mimeType: 'text/plain', buffer: Buffer.from(OWN_BYTES) });
+    await own.getByRole('button', { name: 'Store the file and review the record' }).click();
+    assert.equal(await dialog(ben).locator('.sign-summary').textContent(), `Ben submitted “${OWN_WORK}” under “Charter” as a party.`);
+    assert.ok((await dialog(ben).textContent()).includes(await sha256Hex(OWN_BYTES)), 'the dialog shows the digest the browser computed');
+    await signOpenDialog(ben);
+    await status(ben, `You submitted “${OWN_WORK}”.`);
+    const ownRecord = (await benClient.getBundle(pid)).records.at(-1);
+    assert.deepEqual(
+      [ownRecord.kind, ownRecord.actor, ownRecord.body.delegation, ownRecord.body.artifact.digest],
+      ['contribution.submitted', (await benClient.me()).id, null, await sha256Hex(OWN_BYTES)],
+    );
+
+    // 18. Ada disputes the accepted work. It stays in Ben's credit, marked as disputed.
+    await reload(ada, 'project');
+    await ada.getByRole('button', { name: `Dispute “${CONTRIBUTION}”` }).click();
+    await dialog(ada).getByLabel('Reason', { exact: true }).fill('The tests do not cover halving. (synthetic)');
+    await dialog(ada).getByRole('button', { name: 'Review the record' }).click();
+    await signOpenDialog(ada);
+    await status(ada, `You disputed the acceptance of “${CONTRIBUTION}”.`);
+    await go(ben, '#/profile', 'profile');
+    const disputed = await ben.locator('section', { has: ben.getByRole('heading', { name: 'My credit' }) }).textContent();
+    assert.match(disputed, /Accepted, then disputed/);
+    assert.match(disputed, /Disputed byAda/);
+    assert.match(disputed, /The tests do not cover halving\. \(synthetic\)/);
+    await ben.screenshot({ path: join(SHOTS, 'credit-disputed.png'), fullPage: true });
+    await settled(ada, 'project');
+    await ada.screenshot({ path: join(SHOTS, 'project-after-dispute.png'), fullPage: true });
+
+    // 19. At phone width neither page scrolls sideways (Ada: project, Ben: profile).
     for (const [page, view] of [[ada, 'project'], [ben, 'profile']]) {
       await page.setViewportSize({ width: 360, height: 800 });
       const { scroll, client } = await page.evaluate(() => ({ scroll: document.documentElement.scrollWidth, client: document.documentElement.clientWidth }));

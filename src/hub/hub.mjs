@@ -57,6 +57,11 @@ const REGISTRATION = ['name', 'key', 'nonce', 'signature'];
 const PROFILE = ['name', 'headline', 'skills', 'seeking', 'listed'];
 const BRIEF_EDITS = ['status', 'listed', 'title', 'summary', 'compensation'];
 const AGENT_LIMIT = 'Agent credentials can only read their own projects, store bytes, and submit contributions';
+// Hub policy 10. The browser recognises this refusal by its text (web/actions.mjs).
+export const DELEGATION_EXPIRED = 'The delegation has expired by the hub clock, so it can no longer be used, whatever time the record states';
+// Contribution statuses that count as credit: accepted, and accepted then
+// disputed (Koinos marks such work as contested; it stays in the history).
+const CREDITED = new Set(['accepted', 'disputed']);
 
 // A challenge nonce is base64url of 16 random bytes, the expiry (ms, 64-bit
 // big-endian) and an HMAC-SHA-256 of both under a key made at load.
@@ -472,9 +477,9 @@ export class Hub {
     return { ...i, candidateName: this.#people.get(i.candidate).name };
   }
 
-  // Everyone who can see a brief sees its text and roles. The team and project
-  // are shown to team members; interests to the owner (all) and each
-  // candidate (their own).
+  // Everyone who can see a brief sees its text and roles, and whether its
+  // record has started. The team and project id are shown to team members;
+  // interests to the owner (all) and each candidate (their own).
   #briefView(brief, viewer) {
     const view = {
       id: brief.id,
@@ -485,6 +490,7 @@ export class Hub {
       roles: brief.roles.map((r) => ({ ...r, skills: [...r.skills] })),
       listed: brief.listed,
       status: brief.status,
+      started: brief.project !== null,
       created: brief.created,
       updated: brief.updated,
     };
@@ -542,11 +548,13 @@ export class Hub {
     });
   }
 
+  // Team members see their own briefs; others see listed briefs that are open
+  // and whose record has not started, since nobody can join those.
   async listBriefs(auth) {
     await this.load();
     const me = this.#person(auth);
     return [...this.#briefs.values()]
-      .filter((b) => this.#isMember(b, me.id) || (b.listed && b.status === 'open'))
+      .filter((b) => this.#isMember(b, me.id) || (b.listed && b.status === 'open' && b.project === null))
       .sort((a, b) => byText(b.created, a.created) || byText(a.id, b.id))
       .map((b) => this.#briefView(b, me.id));
   }
@@ -801,6 +809,18 @@ export class Hub {
     return entry;
   }
 
+  // Hub policy 10: a delegation that has expired by the hub clock cannot be
+  // used. Koinos compares the expiry only with the record's signed time, which
+  // policy 3 lets lie up to ten minutes in the past. This covers the agent's
+  // submission and the steward's acceptance of delegated work.
+  #refuseExpiredGrant(state, record, who) {
+    let id = null;
+    if (record.kind === 'contribution.submitted' && who.kind === 'agent') id = record.body.delegation;
+    if (record.kind === 'contribution.accepted') id = state.contributions.find((c) => c.id === record.body.contribution)?.delegation ?? null;
+    const grant = id === null ? undefined : state.delegations.find((d) => d.id === id);
+    if (grant && this.#now() >= Date.parse(grant.expires)) throw invalid(DELEGATION_EXPIRED);
+  }
+
   async #requireStoredBlob(pid, uri, digest, label) {
     if (uri !== niUri(digest)) throw invalid(`${label} must be cited by the URI ${NI_PREFIX}<base64url digest> of its digest`);
     const stored = (await this.#store.readProjectBlobs(pid)).includes(digest) && (await this.#store.getBlob(digest)) !== null;
@@ -831,6 +851,7 @@ export class Hub {
         throw fromKoinos(error);
       }
       this.#checkTime(record.time); // policy 3
+      this.#refuseExpiredGrant(current, record, who); // policy 10
       const b = record.body;
       if (record.kind === 'agreement.proposed') await this.#requireStoredBlob(pid, b.uri, b.digest, 'Agreement terms'); // policy 5
       if (record.kind === 'contribution.submitted') {
@@ -910,6 +931,9 @@ export class Hub {
 
   // --- Credit: accepted work, visible within shared projects only ---------------------------
 
+  // Accepted contributions whose principal is personId, in projects the viewer
+  // shares. A contribution a party disputed after acceptance stays, with
+  // status 'disputed' and who disputed it, why and when.
   async credit(auth, personId) {
     await this.load();
     const me = this.#person(auth);
@@ -920,14 +944,24 @@ export class Hub {
       for (const c of state.contributions) {
         // Koinos attribution only: the principal derived from the signed records
         // (the submitter, or the person who delegated to the submitting agent).
-        if (c.status !== 'accepted' || c.principal !== personId) continue;
-        out.push({
+        if (!CREDITED.has(c.status) || c.principal !== personId) continue;
+        const item = {
           project: pid,
           projectTitle: state.project.title,
           contribution: { id: c.id, title: c.title, summary: c.summary, artifact: { ...c.artifact } },
+          status: c.status,
           acceptedAt: bundle.records.find((r) => r.id === c.acceptance.id).time,
           via: c.actor === c.principal ? null : c.actor,
-        });
+        };
+        if (c.dispute) {
+          item.dispute = {
+            by: c.dispute.actor,
+            byName: state.participants.find((p) => p.id === c.dispute.actor)?.name ?? null,
+            reason: c.dispute.reason,
+            at: bundle.records.find((r) => r.id === c.dispute.id).time,
+          };
+        }
+        out.push(item);
       }
     }
     return out.sort((a, b) => byText(a.acceptedAt, b.acceptedAt) || byText(a.contribution.id, b.contribution.id));

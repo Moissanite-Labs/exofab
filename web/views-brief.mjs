@@ -6,6 +6,7 @@ import { href } from './routes.mjs';
 import { shortId } from './format.mjs';
 import { confirmAction, formDialog } from './dialog.mjs';
 import { startRecord } from './records.mjs';
+import { NOMINATION_NOTE, PARTICIPANT_ACCESS_NOTE, canExpressInterest, interestDecision } from './actions.mjs';
 import { announce, pageHead, problem, list, str, skillTags, needIdentity, needRegistration, hubFor, actionButton, settle, prose, refreshButton } from './shell.mjs';
 
 const INTEREST_STATE = { pending: 'pending', accepted: 'accepted', declined: 'declined', withdrawn: 'withdrawn' };
@@ -70,7 +71,7 @@ async function withdraw(ctx, interest) {
 async function nominate(ctx, agent) {
   const ok = await confirmAction({
     title: `Nominate ${str(agent.name, 'your agent', 120)}?`,
-    message: 'It will be listed as an agent participant when the record starts, with you as its responsible principal. Only you can delegate work to it, and only under an agreement every party consented to.',
+    message: NOMINATION_NOTE,
     confirmLabel: 'Nominate',
   });
   if (!ok) return;
@@ -90,7 +91,7 @@ async function start(ctx) {
     briefId: ctx.brief.id,
     context: (participants) => [
       h('h3', { class: 'modal-section' }, 'Participants, fixed by this record'),
-      notice('These are exactly the people and agents this record will list. Koinos 0.1 cannot add participants later. You become the steward.', 'info'),
+      notice(`These are exactly the people and agents this record will list. Koinos 0.1 cannot add participants later. You become the steward. ${PARTICIPANT_ACCESS_NOTE}`, 'info'),
       participantsTable(participants, 'Participants this record will list'),
     ],
   });
@@ -105,7 +106,7 @@ async function start(ctx) {
 function rolesSection(ctx) {
   const { brief, me, isOwner, isMember } = ctx;
   const mine = list(brief.interests).filter((i) => i.candidate === me.id && i.status === 'pending');
-  const canApply = !isOwner && !isMember && brief.status === 'open' && !brief.project;
+  const canApply = canExpressInterest(brief, { isOwner, isMember });
   return section(
     'Roles',
     list(brief.roles).map((role) => {
@@ -144,6 +145,21 @@ function myInterestsSection(ctx) {
   );
 }
 
+// Accept only when the hub would allow it; otherwise say why. Declining is
+// always possible, so the owner can clear interests that can no longer be met.
+function pendingControls(ctx, interest, name) {
+  const decision = interestDecision(interest, ctx.brief);
+  return [
+    decision.accept ? null : h('p', { class: 'action-blocked' }, decision.reason),
+    h(
+      'div',
+      { class: 'btn-row' },
+      decision.accept ? actionButton(`Accept ${name}`, () => decide(ctx, interest, 'accept'), { variant: 'primary' }) : null,
+      actionButton(`Decline ${name}`, () => decide(ctx, interest, 'decline'), { variant: 'danger' }),
+    ),
+  ];
+}
+
 function inboxSection(ctx) {
   if (!ctx.isOwner) return null;
   const interests = list(ctx.brief.interests);
@@ -173,14 +189,7 @@ function inboxSection(ctx) {
             )
           : null,
         facts([['Sent', timeEl(i.created)], i.decided ? ['Decided', timeEl(i.decided)] : null]),
-        i.status === 'pending'
-          ? h(
-              'div',
-              { class: 'btn-row' },
-              actionButton(`Accept ${name}`, () => decide(ctx, i, 'accept'), { variant: 'primary' }),
-              actionButton(`Decline ${name}`, () => decide(ctx, i, 'decline'), { variant: 'danger' }),
-            )
-          : null,
+        i.status === 'pending' ? pendingControls(ctx, i, name) : null,
       );
     }),
   );

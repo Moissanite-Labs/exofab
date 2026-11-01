@@ -4,7 +4,7 @@
 // journeys over HTTP. Synthetic people Ada and Ben, agent scribe.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, readdir, readFile, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Writable } from 'node:stream';
@@ -189,6 +189,35 @@ test('the export verifies offline, including every cited digest, and tampering i
   const refused = await cli(['verify', changed]);
   assert.equal(refused.status, 1);
   assert.match(refused.stderr, /does not verify \(id\)/);
+});
+
+test('an --out directory that already holds part of an export is refused before the demonstration starts', async (t) => {
+  const out = await tempDir(t, 'exofab-demo-out-');
+  const data = await tempDir(t, 'exofab-demo-data-');
+  await writeFile(join(out, 'VERIFY.txt'), 'old\n');
+  const run = await cli(['demo', '--out', out, '--data', join(data, 'hub')]);
+  assert.equal(run.status, 1);
+  assert.equal(run.stdout, '', 'no step of the journey ran');
+  assert.match(run.stderr, /VERIFY\.txt already exists; choose an empty or new output directory/);
+  assert.deepEqual(await readdir(out), ['VERIFY.txt'], 'no bundle.json or blobs/ was created');
+  assert.equal(await readFile(join(out, 'VERIFY.txt'), 'utf8'), 'old\n');
+  assert.deepEqual(await readdir(data), [], 'no hub data directory was created');
+});
+
+test('export refuses a directory holding any part of an export, even a dangling link, and writes nothing', async (t) => {
+  const { dataDir, result } = await demo(t);
+  for (const [name, make] of [
+    ['bundle.json', (path) => writeFile(path, 'old\n')],
+    ['blobs', (path) => writeFile(path, '')],
+    ['VERIFY.txt', (path) => symlink(join(path, '..', 'nowhere'), path)],
+  ]) {
+    const out = await tempDir(t, 'exofab-export-out-');
+    await make(join(out, name));
+    const exported = await cli(['export', result.project, out, '--data', dataDir]);
+    assert.equal(exported.status, 1, name);
+    assert.match(exported.stderr, /already exists; choose an empty or new output directory/, name);
+    assert.deepEqual(await readdir(out), [name], `${name}: nothing else was written`);
+  }
 });
 
 test('importing the export into a fresh hub keeps the head, the state and the bytes', async (t) => {

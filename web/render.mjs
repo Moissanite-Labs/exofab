@@ -11,6 +11,7 @@ import {
   shortId,
   formatTime,
   revealHidden,
+  isSha256Hex,
 } from './format.mjs';
 
 // Attributes h() may set. Event handler attributes and inline styles are not
@@ -227,7 +228,24 @@ function participantsPanel(view) {
   );
 }
 
-function agreementCard(a) {
+// A small button that hands its target to a callback from the view, with
+// itself, so the view can mark it busy. Nothing is fetched here.
+function cardButton(label, onClick, target) {
+  if (typeof onClick !== 'function') return null;
+  const button = h('button', { type: 'button', class: 'btn btn-small' }, label);
+  button.addEventListener('click', () => onClick(target, button));
+  return button;
+}
+
+function cardButtons(...buttons) {
+  const shown = buttons.filter(Boolean);
+  return shown.length ? h('div', { class: 'btn-row' }, shown) : null;
+}
+
+// onReadTerms(agreementId, button) and onDownload({digest, what, title}, button)
+// come from the project view; without them the cards have no buttons.
+function agreementCard(a, { onReadTerms, onDownload } = {}) {
+  const title = `“${a.title}”`;
   return h(
     'article',
     { class: 'card' },
@@ -247,12 +265,16 @@ function agreementCard(a) {
       ['Terms address', mono(a.uri)],
       ['Record', idCode(a.id)],
     ]),
+    cardButtons(
+      a.id ? cardButton(`Read the terms of ${title}`, onReadTerms, a.id) : null,
+      isSha256Hex(a.digest) ? cardButton(`Download the terms of ${title}`, onDownload, { digest: a.digest, what: 'terms', title: a.title }) : null,
+    ),
   );
 }
 
-function agreementsPanel(view) {
+function agreementsPanel(view, actions) {
   if (view.agreements.length === 0) return section('Agreements', emptyState('No agreement has been proposed yet.'));
-  return section('Agreements', view.agreements.map(agreementCard));
+  return section('Agreements', view.agreements.map((a) => agreementCard(a, actions)));
 }
 
 function delegationsPanel(view) {
@@ -273,7 +295,7 @@ function delegationsPanel(view) {
   );
 }
 
-function contributionCard(c) {
+function contributionCard(c, { onDownload } = {}) {
   return h(
     'article',
     { class: 'card' },
@@ -288,6 +310,7 @@ function contributionCard(c) {
       ['Artifact digest (SHA-256)', mono(c.artifact.digest)],
       ['Artifact address', mono(c.artifact.uri)],
     ]),
+    isSha256Hex(c.artifact.digest) ? cardButtons(cardButton(`Download the artifact of “${c.title}”`, onDownload, { digest: c.artifact.digest, what: 'artifact', title: c.title })) : null,
     h('h4', { class: 'card-subtitle' }, 'Reviews'),
     c.reviews.length
       ? h(
@@ -312,14 +335,16 @@ function contributionCard(c) {
   );
 }
 
-function contributionsPanel(view) {
+function contributionsPanel(view, actions) {
   if (view.contributions.length === 0) return section('Contributions', emptyState('No contributions submitted yet.'));
-  return section('Contributions', view.contributions.map(contributionCard));
+  return section('Contributions', view.contributions.map((c) => contributionCard(c, actions)));
 }
 
 // Panels for a project's verified derived state: the project, participants,
-// agreements with consents, delegations, and contributions.
-export function renderState(state, { now = Date.now(), namesById } = {}) {
+// agreements with consents, delegations, and contributions. onReadTerms and
+// onDownload, when given, add buttons to read an agreement's terms and to
+// save the cited terms and artifact bytes; every participant gets them.
+export function renderState(state, { now = Date.now(), namesById, onReadTerms, onDownload } = {}) {
   const names = namesById ?? namesFromState(state);
   const view = stateView(state, { now, names });
   return h(
@@ -327,8 +352,8 @@ export function renderState(state, { now = Date.now(), namesById } = {}) {
     { class: 'state-panels' },
     projectPanel(view),
     participantsPanel(view),
-    agreementsPanel(view),
+    agreementsPanel(view, { onReadTerms, onDownload }),
     delegationsPanel(view),
-    contributionsPanel(view),
+    contributionsPanel(view, { onDownload }),
   );
 }

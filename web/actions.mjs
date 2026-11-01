@@ -25,6 +25,7 @@ export const CLIENT_LIMITS = Object.freeze({
   minExpiryDays: 1,
   maxExpiryDays: 90,
   defaultExpiryDays: 14,
+  artifactBytes: 4 * 1024 * 1024, // hub: stored bytes are limited to 4 MiB
 });
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -149,7 +150,29 @@ export function readProposal({ title, parties, text, humans }) {
   return { title: requiredLine(title, 'Agreement title'), parties: chosen, text: terms };
 }
 
+// --- Contributions ---------------------------------------------------------------------
+
+// Validates the form for a party's own contribution. `size` is the chosen
+// file's size in bytes, or null when no file is chosen.
+export function readSubmission({ title, summary, size }) {
+  const out = { title: requiredLine(title, 'Title'), summary: requiredText(summary, 'Summary') };
+  if (size === null || size === undefined) throw new Error('Choose the artifact file to submit.');
+  if (!Number.isSafeInteger(size) || size < 0) throw new Error('The artifact file cannot be read.');
+  if (size > CLIENT_LIMITS.artifactBytes) throw new Error(`The artifact file can be at most ${CLIENT_LIMITS.artifactBytes} bytes (4 MiB).`);
+  return out;
+}
+
 // --- Delegations -----------------------------------------------------------------------
+
+// Shown wherever the page says what an expired delegation means.
+export const EXPIRED_DELEGATION = 'Its delegation has expired, so this contribution can no longer be accepted.';
+
+// True for the hub's refusal under its policy 10: the delegation expired by
+// the hub clock, whatever time the record states (src/hub/hub.mjs
+// DELEGATION_EXPIRED). The page then shows EXPIRED_DELEGATION.
+export function isExpiredDelegationRefusal(error) {
+  return error?.status === 422 && error?.code === 'invalid' && typeof error.message === 'string' && error.message.startsWith('The delegation has expired by the hub clock');
+}
 
 export function readExpiryDays(value) {
   const days = Number(value);
@@ -184,18 +207,41 @@ export function previewText(bytes, maxChars = CLIENT_LIMITS.previewChars) {
 
 // --- Agents --------------------------------------------------------------------------
 
-// The commands an agent's runtime runs to register itself and submit work.
+// What an agent participant can do, said where a person decides about one.
+// The hub gives every participant read access to the project and lets it
+// store files there (hub policy 8), whatever its delegations, and nothing in
+// this prototype removes a participant or revokes an agent's credential.
+export const NOMINATION_NOTE =
+  'It will be listed as an agent participant when the record starts, with you as its responsible principal. ' +
+  'Only you can delegate work to it, and only under an agreement every party consented to. ' +
+  'As a participant, its credential will be able to read every record and stored file of the project and store files in it, with or without a delegation. ' +
+  'This prototype has no way to remove it or revoke its credential.';
+
+export const DELEGATION_NOTE =
+  'This delegation lets your agent submit contributions under this agreement until the expiry. ' +
+  'As a project participant it can already read every record and stored file of this project and store files in it. ' +
+  'Revoking or letting the delegation expire does not change that. ' +
+  'You remain its responsible principal and can revoke the delegation at any time. ' +
+  'A contribution whose delegation expires or is revoked before acceptance can never be accepted.';
+
+export const PARTICIPANT_ACCESS_NOTE = 'Every listed participant, including agents, can read all records and stored files of this project.';
+
+// The commands for setting up an agent: the person registers it from their own
+// terminal, and the agent's runtime then submits work with its own token.
 // The agent's key is created and kept there, never in the browser. Tokens are
-// read at a prompt (bash or zsh), so they stay out of shell history.
+// read at a prompt (bash or zsh), so they stay out of shell history. The
+// person's session token is read and exported inside a subshell, so it
+// reaches only the register command: it is gone when that command ends and is
+// never inherited by the agent's runtime or anything it starts.
 export function agentCommands(hubUrl) {
   const hub = String(hubUrl);
   return [
     '# On the machine where the agent runs, in an Exofab checkout: create its key (mode 0600).',
     'node src/cli.mjs keygen scribe.pem',
     '',
-    '# Register it under your account. Paste your session token at the prompt; it is not shown.',
-    'read -rs EXOFAB_TOKEN && export EXOFAB_TOKEN',
-    `node src/cli.mjs agent register --name scribe --key scribe.pem --hub ${hub}`,
+    '# Register it under your account. Run this once in your own terminal, not in the agent’s runtime.',
+    '# Paste your session token at the prompt; it is not shown, and it is gone when the command ends.',
+    `( read -rs EXOFAB_TOKEN && export EXOFAB_TOKEN && node src/cli.mjs agent register --name scribe --key scribe.pem --hub ${hub} )`,
     '',
     '# Later, as the agent, under an active delegation. Paste the agent token that register printed once.',
     'read -rs EXOFAB_AGENT_TOKEN && export EXOFAB_AGENT_TOKEN',
@@ -213,6 +259,7 @@ export function agentCommands(hubUrl) {
 //   consent  {agreement}              party without consent
 //   withdraw {agreement}              party with consent
 //   delegate {agreement, agents}      party, own agent listed; all parties consent
+//   submit   {agreement}              party (own work, no delegation); all parties consent
 //   revoke   {delegation}             grantor of an unrevoked delegation
 //   review   {contribution}           party, neither submitter nor principal
 //   accept   {contribution, review}   steward; latest review approves
@@ -242,6 +289,9 @@ export function projectActions(state, { me, myAgents = [], now = Date.now() } = 
       if (!allConsent(a)) entry.blocked = 'Every party must consent to this agreement before work can be delegated under it.';
       out.push(entry);
     }
+    const submit = { type: 'submit', agreement: a.id };
+    if (!allConsent(a)) submit.blocked = 'Every party must consent to this agreement before work can be submitted under it.';
+    out.push(submit);
   }
 
   for (const d of delegationById.values()) {
@@ -265,10 +315,30 @@ export function projectActions(state, { me, myAgents = [], now = Date.now() } = 
       else if (!allConsent(a)) entry.blocked = 'Every party to the agreement must currently consent before acceptance.';
       else if (c.delegation !== null && !d) entry.blocked = 'Its delegation is not in this history.';
       else if (d?.revoked === true) entry.blocked = 'Its delegation was revoked, so this contribution can no longer be accepted.';
-      else if (d && !(Date.parse(d.expires) > now)) entry.blocked = 'Its delegation has expired, so this contribution can no longer be accepted.';
+      else if (d && !(Date.parse(d.expires) > now)) entry.blocked = EXPIRED_DELEGATION;
       out.push(entry);
     }
     if (isParty(a) && c.status === 'accepted') out.push({ type: 'dispute', contribution: c.id });
   }
   return out;
+}
+
+// --- Briefs ------------------------------------------------------------------------------
+
+const briefStarted = (brief) => brief?.started === true || (typeof brief?.project === 'string' && brief.project !== '');
+
+// Whether the viewer may express interest in a brief's open roles. `started`
+// is shown to every viewer; the project id only to the team.
+export function canExpressInterest(brief, { isOwner = false, isMember = false } = {}) {
+  return !isOwner && !isMember && isObject(brief) && brief.status === 'open' && !briefStarted(brief);
+}
+
+// What the owner may do with a pending interest: {accept: true}, or
+// {accept: false, reason}. Declining is always possible while it is pending.
+export function interestDecision(interest, brief) {
+  const role = list(brief?.roles).find((r) => isObject(r) && r.id === interest?.role);
+  if (briefStarted(brief)) return { accept: false, reason: 'The record has started, so its participants are fixed.' };
+  if (!role?.open) return { accept: false, reason: 'This role is already filled.' };
+  if (brief.status !== 'open') return { accept: false, reason: 'Reopen the brief to accept anyone.' };
+  return { accept: true };
 }

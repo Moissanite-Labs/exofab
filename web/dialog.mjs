@@ -127,6 +127,8 @@ function codeBlock(value, label) {
   return h('pre', { class: 'code-block', tabindex: 0, 'aria-label': label }, value);
 }
 
+// The exact terms text, both digests and whether they match. With
+// onReadChange, a box the signer ticks after reading; without it, read only.
 function termsSection(terms, onReadChange) {
   const nodes = [h('h3', { class: 'modal-section' }, 'Terms text')];
   const { check, shown, canSign } = termsGate(terms);
@@ -145,11 +147,25 @@ function termsSection(terms, onReadChange) {
     ], 'facts-digests'),
   );
   nodes.push(notice(check.message, check.state === 'match' ? 'ok' : 'danger'));
-  if (canSign) {
+  if (canSign && onReadChange) {
     const box = h('input', { type: 'checkbox', id: nextId('terms-read'), on: { change: () => onReadChange(box.checked) } });
     nodes.push(h('div', { class: 'check' }, box, h('label', { for: box.id }, 'I have read the exact terms text above.')));
   }
   return { nodes, canSign };
+}
+
+// Shows an agreement's exact stored terms and their digests, read only:
+// there is nothing to sign. Resolves when closed.
+export async function viewTerms({ title, terms, facts: rows = [] }) {
+  const { nodes } = termsSection(terms, null);
+  const { result } = openDialog({
+    title,
+    description: 'Read only: nothing is signed here. This browser fetched the exact stored bytes from the hub and computed their SHA-256 digest itself.',
+    content: [rows.length ? facts(rows) : null, ...nodes],
+    actions: [{ label: 'Close', value: null, autofocus: true }],
+    wide: true,
+  });
+  return result;
 }
 
 // A form in a modal. `content` is placed inside the form; `read(form)` returns

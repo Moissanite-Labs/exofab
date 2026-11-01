@@ -48,7 +48,7 @@ test('the proposals are reachable from the entry documents and recorded as propo
   }
 });
 
-test('the documented commands exist, and people sign only in the browser', async () => {
+test('the documented commands exist, and people sign only in the browser, except the demonstration’s fictional people', async () => {
   const prototype = await read('docs/prototype.md');
   const table = section(prototype, 'Command line');
   const commands = new Set([...table.matchAll(/`exofab ([a-z]+)/g)].map((m) => m[1]));
@@ -56,10 +56,13 @@ test('the documented commands exist, and people sign only in the browser', async
   for (const command of commands) assert.equal(await main([command, '--help'], { stdout: sink(), stderr: sink(), env: {} }), 0, `exofab ${command}`);
   // `exofab` is a name for the entry point; the document says how to run it.
   assert.ok(section(prototype, 'Run it').includes('`node src/cli.mjs`'));
-  // No command signs as a person, so the document must not say the command line holds a person's key.
+  // Only the demonstration signs as (fictional) people, and the document must say so;
+  // it must not say the command line holds a real person's key.
   const people = section(prototype, 'Identities and keys').split('\n').find((l) => l.startsWith('- **People.**'));
   assert.doesNotMatch(people, /command line uses/i);
-  assert.match(people, /no command signs as a person/);
+  assert.doesNotMatch(people, /no command signs as a person/i);
+  assert.match(people, /Only `exofab demo` signs as a person: it plays its fictional people with keys generated in memory for that run\./);
+  assert.match(people, /No command holds a real person's key/);
 });
 
 test('every test suite that can skip is documented with what it needs', async () => {
@@ -89,6 +92,10 @@ test('the interoperability description counts the mutated bundles the suite actu
   assert.ok(total >= 12);
   const prototype = await read('docs/prototype.md');
   assert.ok(prototype.includes(`Exofab rejects all ${total} mutated bundles`), `expected "all ${total}"`);
+  // Mutated bundles are compared on accept or reject alone; valid histories on their full derived state.
+  const reading = section(prototype, 'Reading the results');
+  assert.ok(reading.includes(`For the ${total} mutated bundles, the comparison with Koinos is accept or reject only`), 'reject-only comparison');
+  assert.match(reading, /Valid histories are compared on their full derived state/);
   const koinosShare = known === 0 ? `rejects all ${total} as well` : `rejects ${total - known} of them`;
   assert.ok(prototype.includes(koinosShare), `expected "${koinosShare}"`);
 });

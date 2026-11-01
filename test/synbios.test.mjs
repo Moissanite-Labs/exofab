@@ -734,6 +734,21 @@ describe('exofab synbios command line', () => {
     assert.ok(JSON.parse(result.stdout).warnings.some((warning) => warning.startsWith('bidirectional control characters')));
   });
 
+  test('inspect escapes bidirectional and C1 control characters in its error messages', async () => {
+    // The parse error quotes a duplicate key, so the export controls that text.
+    const key = JSON.stringify(`a${ch(0x202e)}gnp.exe${ch(0x9b)}2J`);
+    const file = path.join(dir, 'duplicate-bidi.json');
+    await writeFile(file, `{${key}: 1, ${key}: 2}`);
+    const result = await run(['inspect', file]);
+    assert.equal(result.code, 1);
+    assert.match(result.stderr, /Invalid Synbios export/);
+    assert.match(result.stderr, /Duplicate object key/);
+    assert.equal(result.stderr.includes(ch(0x202e)), false, 'raw U+202E on stderr');
+    assert.equal(result.stderr.includes(ch(0x9b)), false, 'raw U+009B on stderr');
+    assert.ok(result.stderr.includes(`${BS}u202e`), result.stderr);
+    assert.ok(result.stderr.includes(`${BS}u009b`), result.stderr);
+  });
+
   test('inspect refuses malformed or missing files and bad usage', async () => {
     const malformed = path.join(dir, 'malformed.json');
     await writeFile(malformed, '{"version": 1, "version": 1}');

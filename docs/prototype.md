@@ -34,6 +34,8 @@ The command-line tool is `node src/cli.mjs`, run from the repository root. This 
 
 `npm start` keeps its data in `./.exofab`. Open the address in a browser, create a person, and follow the journey. Keys are created and kept in that browser profile. Use a second browser profile for a second person, or the in-page identity switcher, which is labelled as a single-machine demonstration aid.
 
+In a project page, any participant can read an agreement's exact terms at any time, read only, and save the bytes each agreement and contribution cites. For a project imported without `exofab import --blobs`, the hub does not hold those bytes and the browser says so. The browser checks their SHA-256 against the record and saves each file under its hex digest. **Download bundle** saves the signed records only. Put the saved files in a folder named `blobs` next to the bundle, and `exofab verify BUNDLE --blobs blobs` checks the records and the bytes. `exofab export` writes both at once, but it reads the hub's data directory. A party to an agreement can also submit their own work in the browser, with no delegation; agents submit with `exofab agent submit`.
+
 ## Layout
 
 | Path | Contents |
@@ -56,12 +58,12 @@ The command-line tool is `node src/cli.mjs`, run from the repository root. This 
 ## Identities and keys
 
 - An identity is a Koinos key id: `koinos:ed25519:` followed by the unpadded base64url encoding of a 32-byte Ed25519 public key.
-- **People.** The browser generates a non-extractable key with WebCrypto and stores it in IndexedDB. People act through the browser client: no command signs as a person, and `exofab agent register` authenticates the person with their session token, not their key.
+- **People.** The browser generates a non-extractable key with WebCrypto and stores it in IndexedDB. People act through the browser client. Only `exofab demo` signs as a person: it plays its fictional people with keys generated in memory for that run. No command holds a real person's key, and `exofab agent register` authenticates the person with their session token, not their key.
 - **Agents.** An agent's key belongs to the agent's runtime: a PEM file used by `exofab agent` commands. A person registers an agent by presenting the agent's public key and a proof signed by that key.
 - **Proof of possession.** Registration signs a hub challenge: `exofab/0.1\nregister-person\n<nonce>\n<key>` for people and `exofab/0.1\nregister-agent\n<nonce>\n<key>\n<principal>` for agents. Challenges are single-use and expire after five minutes. The hub keeps no table of outstanding challenges: each nonce carries its expiry and an HMAC under a key the hub makes when it starts, so requesting many challenges cannot push out one in use. Spent nonces are remembered until they expire, and a restart invalidates outstanding challenges.
-- **Sessions.** Registration returns a bearer token once. The hub stores only its SHA-256. Authority always comes from the token, never from request fields.
+- **Sessions.** Registration returns a bearer token once. The hub stores only its SHA-256. Authority always comes from the token, never from request fields. Session tokens cannot yet be revoked or rotated, and they do not expire; this is a known limit of the prototype. The agent setup commands on the Profile page therefore give a person's token only to the one command that registers the agent, inside a subshell, so the agent's runtime never inherits it.
 
-The hub never receives a private key. A test checks that the data directory contains no private key material after the demonstration.
+The hub never receives a private key. A test checks that the data directory contains no private key material after the demonstration. The hub does serve the browser client, though, so whoever controls the code the hub serves could make a browser sign. How the client is distributed and checked is open.
 
 ## Hub state
 
@@ -95,8 +97,9 @@ These narrow Koinos 0.1. None widens it.
 5. `agreement.proposed` must cite a blob already stored for the project, using the URI `ni:///sha-256;<base64url digest>` and its hex digest.
 6. `contribution.submitted` must cite a stored artifact blob in the same way.
 7. `delegation.granted` may name only an agent registered under the granting person's account.
-8. Agent credentials can call only read endpoints for their projects, blob upload, and record append for `contribution.submitted`.
-9. Project records and blobs are visible only to project participants. A blob is served for a project only if it was stored for that project, by upload or by `exofab import --blobs`; a record citing its digest is not enough. Briefs and profiles are visible to others only when listed, except between people the hub has already put in contact: a brief's owner and its candidates, and teammates. Sharing an imported project does not count, because a Koinos genesis is signed by its steward alone.
+8. Agent credentials can call only read endpoints for their projects, blob upload, and record append for `contribution.submitted`. This does not depend on any delegation, and nothing in the prototype revokes an agent's token or removes it from a project. The nomination and delegation dialogs say this in full. The start-record notice tells the steward that every listed participant, including agents, can read all of the project's records and stored files.
+9. Project records and blobs are visible only to project participants. A blob is served for a project only if it was stored for that project, by upload or by `exofab import --blobs`; a record citing its digest is not enough. Briefs and profiles are visible to others only when listed, except between people the hub has already put in contact: a brief's owner and its candidates, and teammates. Sharing an imported project does not count, because a Koinos genesis is signed by its steward alone. This policy implements policy 5 of the [first slice](first-slice.md), "Private by default".
+10. A delegation that has expired by the hub clock can no longer be used, whatever time a record states. The hub refuses an agent's `contribution.submitted` under it, and the `contribution.accepted` of a contribution submitted under it. Koinos compares the expiry only with the record's signed time, so policy 3 alone would let either record be dated up to ten minutes before the expiry and sent after it. A bundle verified offline, with no hub clock, can still hold such a record.
 
 ## HTTP API
 
@@ -112,7 +115,7 @@ The server binds to `127.0.0.1` only. It rejects other `Host` headers, rejects c
 | `GET /api/me` | person or agent | Own identity, profile, agents |
 | `PUT /api/me/profile` | person | Update own profile |
 | `GET /api/people`, `GET /api/people/{id}` | person | Listed profiles |
-| `GET /api/people/{id}/credit` | person | Accepted contributions in projects the viewer shares |
+| `GET /api/people/{id}/credit` | person | Accepted contributions in projects the viewer shares, including accepted work a party later disputed, marked as disputed |
 | `POST /api/briefs`, `GET /api/briefs` | person | Publish and list briefs |
 | `GET /api/briefs/{id}`, `PATCH /api/briefs/{id}` | person; owner edits | Read or update a brief |
 | `GET /api/suggestions` | person | Briefs whose roles share declared skills, with reasons |
@@ -130,12 +133,14 @@ The server binds to `127.0.0.1` only. It rejects other `Host` headers, rejects c
 | `POST /api/projects/{pid}/blobs` | participant | Store bytes; returns digest and `ni:` URI |
 | `GET /api/projects/{pid}/blobs/{digest}` | participant | Read stored bytes |
 
+Credit keeps a contribution that a party disputed after its acceptance, marked as disputed with who disputed it, why and when. This follows Koinos, where a dispute marks accepted work as contested and the acceptance stays in the history. Whether disputed work should count as credit is not decided.
+
 ## Command line
 
 | Command | Purpose |
 | --- | --- |
 | `exofab serve [--data DIR] [--port N]` | Run the hub and browser client |
-| `exofab demo [--out DIR] [--data DIR]` | Run the synthetic journey through the HTTP API, export the result, and verify the export from disk |
+| `exofab demo [--out DIR] [--data DIR]` | Run the synthetic journey through the HTTP API, export the result, and verify the export from disk. `--out` must not already hold an export; this is checked before the journey starts. |
 | `exofab keygen OUT.pem` | Create a key file and print its id |
 | `exofab verify BUNDLE [--expect-head H] [--expect-project P] [--blobs DIR]` | Verify a bundle and, optionally, the bytes it references. Prints every cited URI; one that is not an `ni:///sha-256` URI is reported with a warning and never fetched. |
 | `exofab export PROJECT OUTDIR [--data DIR]` | Write the bundle, referenced bytes, and a short verification note |
@@ -151,6 +156,7 @@ The server binds to `127.0.0.1` only. It rejects other `Host` headers, rejects c
 
 - `test/web.e2e.test.mjs` drives the browser client through the whole journey with Playwright, when `require("playwright")` resolves, for example through `NODE_PATH`. Playwright is not a dependency and nothing here installs it. It is the only test that shows the consent dialog in a browser (acceptance criterion 3); `test/e2e.test.mjs` checks the same terms and digest logic without a browser. Screenshots go to a temporary directory that is removed afterwards; set `EXOFAB_SCREENSHOTS=DIR` to keep them.
 - One test in `test/koinos.test.mjs` reads the Koinos example bundle and its cited files as data when `KOINOS_DIR` is set, and verifies them with Exofab's implementation. No Koinos code is loaded.
+- One test in `test/web-actions.test.mjs` runs the agent setup commands in `bash`, when `bash` is available, to check that the person's session token reaches only the register command. Without `bash`, only that test's static checks run.
 - The three interoperability suites below.
 
 ## Interoperability checks
@@ -194,7 +200,7 @@ Relative paths are resolved against the current directory. A variable that is se
 ### Reading the results
 
 - **Known divergences.** Cases where the Koinos reference accepts a bundle that Exofab rejects on purpose are listed in `KNOWN_UPSTREAM` in `test/interop-koinos.test.mjs`. They are reported as `# TODO` with the reason and do not fail the run, while Exofab's own rejection is still asserted. The list is currently empty.
-- The Koinos comparisons are accept or reject only. Koinos has no error codes, so the reasons cannot be compared.
+- For the 23 mutated bundles, the comparison with Koinos is accept or reject only: Koinos has no error codes, so the reasons cannot be compared. Valid histories are compared on their full derived state: Koinos `inspect` output must be deep-equal to the state Exofab derives.
 - A Synbios export is unsigned. A valid `inspectExport` or Synbios `verify` result shows internal consistency, not who produced the bytes. The Koinos record signs the digest of the exact bytes that were reviewed.
 
 ### Not covered
