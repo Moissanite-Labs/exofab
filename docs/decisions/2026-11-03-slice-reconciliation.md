@@ -45,12 +45,12 @@ Read from the compass coordination log of 2026-11-03 (`ecosystem-map/2026-11-03-
 
 - People decide and agents prepare. Every record is signed by its own author. Recording a contribution decides no ownership, rights, or pay. Stated in synbios `docs/vision.md`, the synmerit README, #5, and #15.
 - Team formation stays in Exofab. Stated in the 2026-11-02 correction on #14 and in P-2 of #5.
-- The build sits in Synbios. Stated in #14, #15, and synbios#50.
+- Work done together on the build sits in Synbios, and Exofab does not duplicate the forge. Stated in #14, #15, and synbios#50. Each component stays useful on its own, as the compass record asks, so standalone Exofab does not require a running Synbios.
 - The record layer is Koinos 0.1 with keys held by each person's own client. Stated in P-3 of #5 and implemented in #6.
 
 ## Where they differ, and the proposed reconciliation
 
-1. **Where the build steps of the #5 slice run.** #5 says the delegated task runs "optionally as a Synbios task". #14 and #15 say the build is never Exofab work. Reconciled: the task always runs in Synbios. Exofab keeps the delegation decision and the Koinos record. One sentence changes in #5.
+1. **Where the build steps of the #5 slice run.** #5 says the delegated task runs "optionally as a Synbios task". #14 and #15 say the build is never Exofab work. Reconciled on 2026-11-03, on a correction relayed by ahrazzle on #18: in the composed slice the task runs in Synbios; standalone, Exofab does not require a running Synbios and does not duplicate the forge, so the task is done with the agent's own tools and submitted as artifact bytes. #5's optional integration already says this. Exofab keeps the delegation decision and the Koinos record in both cases. No sentence changes in #5.
 2. **Who holds the ownership record.** #15 says "Exofab stores the agreed terms". The 2026-11-03 boundary gives ownership and participation to Synmerit. Reconciled as a proposal: Synmerit records the terms digest each owner consented to and the credit that informs the terms. Exofab runs the process and points to the private store that holds the signed instrument. Needs D4.
 3. **Ventures as the main job or a later step.** #13 lists ventures under "later, only if decided". #14 and #15 make them the main job. Reconciled: the formation slice in #5 and the venture slice in #15 are two halves of one journey, in the order of the synthetic example. The ventures bullet in #13 becomes a pointer to #15.
 4. **Economics.** #11 and the compass draft record only explicit human agreements. Synmerit #6 and #16 explore tokens, funding, and bounded spending. Reconciled for this slice: Koinos 0.1 agreement records only. #6 and #16 stay outside the slice and need their own decisions. The per-act approval on the four acts holds either way (D2).
@@ -74,7 +74,7 @@ Each decision needs an owner (#7) and a row in the [roadmap](../roadmap.md) when
 
 ## Order of updates
 
-1. **Exofab #5.** Change one sentence in "How the slice can use Synbios": the delegated task runs in Synbios, not optionally. Ask for the approval to be confirmed on the current head `20d6b00`. Merge when #7 and D1 allow.
+1. **Exofab #5.** No wording change: its optional Synbios integration is the standalone case, and the composed case is the example in end-to-end-slice.md. Ask for the approval to be confirmed on the current head `20d6b00`. Merge when #7 and D1 allow.
 2. **Exofab #6.** Retarget to `main` after #5 merges. No content change for this record.
 3. **Exofab #15.** First review, fixed at `c258274`: the human owners choose the place and the form on advice from qualified people; company records live in a private store the owners control, outside this repository; the pilot test says what Exofab delivers and what it tracks; the body says proposal, not draft. Second review, the D2 revision: the four acts become approved acts that an agent performs under per-act owner approval, a tax submission always needs its own, natural-person steps are cited per rule, and the pilot test records the agent and the approval for each act. After D4, narrow the ownership bullet to the process and the private store. Rebase on `main` after #5.
 4. **This pull request.** Add the README and roadmap links after #5 and #15 land, so the links do not conflict with either.

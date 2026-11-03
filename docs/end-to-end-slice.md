@@ -13,6 +13,8 @@ Given by Shahid Arifuddin on 2026-11-03, refining #14:
 
 **Approved acts.** Four acts need their own approval in every project of this slice: filing a company paper, signing a document, moving money, and submitting a tax filing. An agent prepares and performs each of them. No grant or standing approval covers the act. Each act needs its own exact-text approval from an owner, and a tax submission always needs its own. A step stays with a person only where a law or a provider requires a natural person, cited per step. This was directed on #15 on 2026-11-03 (decision D2 in the reconciliation record).
 
+**Standalone and composed.** Each component stays useful on its own, as the compass record asks. The example and the handoffs below describe the composed slice, where all four work together. Standalone, Exofab does not require a running Synbios and does not duplicate the forge: a delegated task is done with the agent's own tools and submitted as artifact bytes, as the first slice in #5 allows. Synbios and Synmerit already run on their own. Each acceptance criterion says which case it covers.
+
 ## Responsibility matrix
 
 Each cell says what that project does for the activity. An empty cell means the project has no part in it. The last column names the human decision or approval that no project and no agent can take over.
@@ -22,7 +24,7 @@ Each cell says what that project does for the activity. An empty cell means the 
 | Discovery and matching | Owns: briefs, declared profiles, explained suggestions, double opt-in | | | | Each person accepts or declines |
 | Team and charter | Owns the process and the experience of agreement | | Records `project.created`, `agreement.proposed`, `agreement.consented` | Drafts the charter if asked | Each party consents with their own key |
 | Sending an agent | Owns the decision, the scope, the expiry, and revocation | Holds the task grant: `claim`, `work`, `artifact`, `evidence`, `submit` | Records `delegation.granted` and `delegation.revoked` | Runs the agent under its own gate | The grantor decides |
-| Build | | Owns, self-contained: tasks, artifacts, test evidence, forge review, acceptance | | Does the prepared work | A human other than the artifact author approves |
+| Build | Holds no forge. Standalone, the delegated task runs with the agent's own tools | Owns, self-contained: tasks, artifacts, test evidence, forge review, acceptance (composed case) | | Does the prepared work | A human other than the artifact author approves |
 | Contribution record | Sequences the records in the pilot, with the exact Synbios export bytes as the artifact | Exports the task bundle | Defines and verifies `contribution.submitted`, `reviewed`, `accepted`, `disputed` | | Reviewer and steward are people |
 | MVP handoff pack | Receives it and starts the company checklist from it | Produces it from the accepted tasks | May hold a reference to it (open) | | Participants consent to sharing it |
 | Forming the company | Lays out the options, tracks each filing, its approval, and its date, keeps the checklist | | | Prepares the papers and files them under per-act approval | Owners choose the place and form on qualified advice, and approve each filing and signature; a step stays with a person only where a rule requires it |
@@ -45,9 +47,11 @@ Each cell says what that project does for the activity. An empty cell means the 
 | H8 | Exofab to Synmerit | The ownership terms digest each owner consented to | Proposed here (D4); uses Koinos 0.1 agreement records unchanged | this document |
 | H9 | Exofab to the owners' private store | Filings, the signed ownership instrument, invoices, payment and tax records | Proposed in #15; which store is open (D3) | [post-MVP proposal](post-mvp-company.md) in #15 |
 
+H2, H4, and H6 exist only in the composed case. Standalone, H5 cites the agent's artifact bytes instead of a Synbios export, and the product record for the venture steps is assembled from the accepted Koinos contributions instead of a handoff pack.
+
 ## A synthetic end-to-end example
 
-All names are fictional. Steps 1 to 5 follow the worked example in the [first slice](first-slice.md) proposed in #5. The build steps sit in Synbios, as #14 directs.
+All names are fictional. Steps 1 to 5 follow the worked example in the [first slice](first-slice.md) proposed in #5. This is the composed case: the build steps sit in Synbios, as #14 directs for work done together on the build. Standalone, steps 6 to 10 are replaced by scribe doing the work with its own tools, and step 11 cites those artifact bytes.
 
 **Formation, in Exofab**
 
@@ -91,18 +95,18 @@ Steps 6 to 12 repeat for each task until Ada and Ben agree that the product is a
 
 ## Acceptance criteria
 
-Synthetic data only. Where a criterion reuses the [first slice](first-slice.md#acceptance-criteria) criteria from #5, it says so.
+Synthetic data only. Where a criterion reuses the [first slice](first-slice.md#acceptance-criteria) criteria from #5, it says so. Each criterion names its case: both, standalone only, or composed only.
 
-1. **E-1, formation.** Two people reach a team through their own actions. Every Koinos record is signed in its author's own client. The hub's data holds no private key. (First slice criteria 1 to 3.)
-2. **E-2, build start.** A Synbios project and task are created from the charter. The task text carries the Koinos project id, the agreement id, and the terms digest. The Synbios grant names only an agent listed in the Koinos project.
-3. **E-3, build.** The task reaches `accepted` in Synbios with current passing test evidence and a review by a human who is not the artifact author. The export verifies with `synbios verify`.
-4. **E-4, contribution record.** The Koinos contribution cites the exact export bytes. Delegation, review, acceptance, and refusals follow first slice criteria 4 to 8. The bundle verifies with both verifiers and re-imports to the same head, participants, and attribution.
-5. **E-5, handoff pack.** One pack carries the six fields proposed in synbios#51. Every accepted task in it has an export that verifies. The contributors and reviewers named in the pack match the Koinos attribution for those tasks. Each participant's consent to sharing is recorded.
-6. **E-6, approved acts.** Every approved act in the checklist records the agent that performed it and the owner's per-act approval that covered it, or the rule that kept the step with a person. An agent cannot perform an approved act under a grant or a standing approval alone, and a test shows the refusal. A tax submission without its own approval is refused.
-7. **E-7, ownership terms.** The agreed terms exist as bytes with a digest. Each owner consents to that digest with their own key. The consent records verify.
-8. **E-8, private records.** No real company record, name, or account enters any public repository or hub log. A check runs against the synthetic pack and the hub data.
-9. **E-9, launch and calendar.** The launch plan and the 90-day calendar exist, and each item names its owner and its date.
-10. **E-10, traceability.** From the ownership record, a reader reaches the handoff pack, each accepted task's export, and the charter text, without Exofab running.
+1. **E-1, formation.** Two people reach a team through their own actions. Every Koinos record is signed in its author's own client. The hub's data holds no private key. (First slice criteria 1 to 3.) Both cases.
+2. **E-2, build start.** A Synbios project and task are created from the charter. The task text carries the Koinos project id, the agreement id, and the terms digest. The Synbios grant names only an agent listed in the Koinos project. Composed case.
+3. **E-3, build.** The task reaches `accepted` in Synbios with current passing test evidence and a review by a human who is not the artifact author. The export verifies with `synbios verify`. Composed case.
+4. **E-4, contribution record.** The Koinos contribution cites the exact artifact bytes: the Synbios export in the composed case, the agent's artifact standalone. Delegation, review, acceptance, and refusals follow first slice criteria 4 to 8. The bundle verifies with both verifiers and re-imports to the same head, participants, and attribution. Both cases.
+5. **E-5, handoff pack.** One pack carries the six fields proposed in synbios#51. Every accepted task in it has an export that verifies. The contributors and reviewers named in the pack match the Koinos attribution for those tasks. Each participant's consent to sharing is recorded. Composed case; standalone, the product record is assembled from the accepted Koinos contributions and E-10 covers its trace.
+6. **E-6, approved acts.** Every approved act in the checklist records the agent that performed it and the owner's per-act approval that covered it, or the rule that kept the step with a person. An agent cannot perform an approved act under a grant or a standing approval alone, and a test shows the refusal. A tax submission without its own approval is refused. Both cases.
+7. **E-7, ownership terms.** The agreed terms exist as bytes with a digest. Each owner consents to that digest with their own key. The consent records verify. Both cases.
+8. **E-8, private records.** No real company record, name, or account enters any public repository or hub log. A check runs against the synthetic pack, or the standalone product record, and the hub data. Both cases.
+9. **E-9, launch and calendar.** The launch plan and the 90-day calendar exist, and each item names its owner and its date. Both cases.
+10. **E-10, traceability.** From the ownership record, a reader reaches the handoff pack or the standalone product record, each accepted contribution's artifact bytes, and the charter text, without Exofab running. Both cases.
 
 ## Outside this slice
 
