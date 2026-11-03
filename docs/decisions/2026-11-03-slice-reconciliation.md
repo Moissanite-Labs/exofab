@@ -39,7 +39,7 @@ Read from the compass coordination log of 2026-11-03 (`ecosystem-map/2026-11-03-
 
 - Who decides for Exofab (#7).
 - Whether #14 is accepted with the 2026-11-03 boundary (D1 below).
-- Decisions D2 to D9 below.
+- Decisions D3 to D9 below. D2 is recorded; its roadmap row waits on #7.
 
 ## Where the proposals agree
 
@@ -63,7 +63,7 @@ Each decision needs an owner (#7) and a row in the [roadmap](../roadmap.md) when
 | ID | Decision | Options seen in the record | Proposal |
 | --- | --- | --- | --- |
 | D1 | Accept, change, or reject #14 with the 2026-11-03 boundary | Accept. Change. Reject. | Accept, with the wording in end-to-end-slice.md. |
-| D2 | Who performs the four acts (file, sign, move money, submit a tax filing), and under what approval? | Human-only. An agent performs each under a per-act, exact-text owner approval, as Exo's gate does for tool calls. Allowed under a bounded spend mandate, as synmerit#16 explores for venture funds. | Directed on #15 on 2026-11-03: an agent performs each act under a per-act owner approval; a tax submission always needs its own; a step stays with a person only where a law or a provider requires a natural person; automated decision making is a later feature. Awaiting the author's confirmation and the decision owner's record. |
+| D2 | Who performs the four acts (file, sign, move money, submit a tax filing), and under what approval? | Human-only. An agent performs each under a per-act, exact-text owner approval, as Exo's gate does for tool calls. Allowed under a bounded spend mandate, as synmerit#16 explores for venture funds. | Recorded on 2026-11-03 on the founder's confirmation (see the comment on #14): an agent performs each act under a per-act owner approval; a tax submission always needs its own; a step stays with a person only where a law or a provider requires a natural person; automated decision making is a later feature. The roadmap row waits on the decision owner (#7). |
 | D3 | Where do a real company's private records live? | A private repository the owners control. An encrypted store on the owners' own machines. A private hosted Exofab workspace, which does not exist yet. | Undecided. In every option this repository holds templates and synthetic examples only. |
 | D4 | Where does the ownership record live? | Exofab stores the terms, as #15 says today. Synmerit records the consented digest and the credit, while Exofab runs the process and keeps the private instrument, as the 2026-11-03 boundary implies. | The second. |
 | D5 | Who writes the Koinos contribution records for Synbios work? | Exofab, with the exact export bytes as the artifact, as #6 does and tests. Synbios directly, which has no signing today. One coarse record per product from the handoff pack. | Exofab for the pilot. |
