@@ -1,0 +1,382 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Exofab · Forge · Tidepool (example) — Direction 3: Field Ledger</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&family=IBM+Plex+Mono:wght@400;500&family=Allura&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#f6f3ec; --paper-2:#efeadf; --sea:#e3ecea; --ink:#1f2328; --ink-2:#464b53; --ink-3:#636970; --rule:#d9d1c1; --rule-2:#bfb5a2;
+  --human:#9a3b26; --agent:#0d5c63; --pen:#1d3a8a; --gold:#8a6a1f;
+  --water:#9cc3c0; --water-2:#6fa6a3;
+  --focus:#1d3a8a;
+  --sp-1:4px; --sp-2:8px; --sp-3:12px; --sp-4:16px; --sp-5:24px; --sp-6:32px; --sp-7:48px; --sp-8:72px;
+  --ease:cubic-bezier(.25,.8,.25,1); --ease-slow:cubic-bezier(.45,0,.2,1);
+  --d-fast:150ms; --d-med:400ms; --d-slow:1400ms;
+  --serif:"Newsreader","Source Serif Pro","Iowan Old Style",Georgia,serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  --hand:"Allura","Snell Roundhand","Segoe Script",cursive;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--paper);color:var(--ink);font:18px/1.6 var(--serif);-webkit-font-smoothing:antialiased;font-optical-sizing:auto;overflow-x:clip}
+:focus-visible{outline:2px solid var(--focus);outline-offset:4px;border-radius:2px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.sc{font:500 11px/1.4 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3)}
+.h{color:var(--human)} .a{color:var(--agent)}
+.mk{display:inline-block;width:8px;height:8px;margin-right:6px;vertical-align:1px}
+.mk.h{border-radius:50%;background:var(--human)}
+.mk.a{border:1.5px solid var(--agent);transform:rotate(45deg);width:7px;height:7px}
+.who-h{font-style:italic}
+.who-a{font-variant:small-caps;letter-spacing:.04em}
+
+/* masthead */
+.mast{max-width:1320px;margin:0 auto;padding:22px 40px 0}
+.mast-row{display:flex;align-items:baseline;gap:24px;justify-content:space-between}
+.mast .name{font:500 15px var(--mono);letter-spacing:.24em}
+.mast .center{font-style:italic;color:var(--ink-2)}
+.mast .right{display:flex;gap:18px;align-items:baseline}
+.ex{font:500 10.5px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--ink-2);border-bottom:1px dotted var(--ink-3)}
+.dbl{border:0;border-top:3px double var(--ink);margin:14px 0 0}
+
+/* layout */
+.page{max-width:1320px;margin:0 auto;padding:0 40px;display:grid;grid-template-columns:220px minmax(0,640px) 280px;gap:0 56px;justify-content:center}
+.rail{position:sticky;top:0;align-self:start;padding-top:40px;max-height:100vh}
+main{padding-top:36px;min-width:0}
+.margin{padding-top:36px}
+
+/* tide gauge */
+.gauge{display:grid;grid-template-columns:28px 1fr;gap:0 14px;height:300px;margin-top:10px}
+.tube{position:relative;border:1px solid var(--ink);border-radius:14px;overflow:hidden;background:#fbf9f4}
+.water{position:absolute;left:0;right:0;bottom:0;height:var(--lvl,46%);background:linear-gradient(180deg,var(--water),var(--water-2));transition:height var(--d-slow) var(--ease-slow)}
+.water::before{content:"";position:absolute;left:-50%;width:200%;top:-5px;height:10px;background:radial-gradient(ellipse at 25% 100%,var(--water) 40%,transparent 41%) 0 0/50% 100% repeat-x;animation:wave 6s linear infinite}
+@keyframes wave{to{transform:translateX(25%)}}
+.marks{list-style:none;margin:0;padding:0;display:flex;flex-direction:column-reverse;justify-content:space-between;position:relative}
+.marks li{position:relative;font-size:15px;line-height:1.2;color:var(--ink-3)}
+.marks li::before{content:"";position:absolute;left:-14px;top:.6em;width:10px;border-top:1px solid var(--ink-3)}
+.marks li .sc{display:block;font-size:9.5px}
+.marks li.done{color:var(--ink-2)}
+.marks li.now{color:var(--ink);font-weight:500}
+.marks li.now::after{content:"← tide is here";font:italic 13px var(--serif);color:var(--agent);display:block;font-weight:400}
+.company{margin-top:36px}
+.company ul{list-style:none;margin:10px 0 0;padding:0}
+.company li{padding:7px 0;border-top:1px solid var(--rule);font-size:15.5px;line-height:1.3}
+.company li small{display:block;font-size:13px;color:var(--ink-3)}
+
+/* masthead title */
+.kicker{display:flex;gap:16px;flex-wrap:wrap}
+h1{font:400 76px/0.95 var(--serif);font-style:italic;letter-spacing:-.03em;margin:10px 0 10px;font-variation-settings:"opsz" 72}
+.standfirst{font-size:20px;line-height:1.45;color:var(--ink-2);margin:0;max-width:58ch}
+.standfirst::first-line{color:var(--ink)}
+
+h2.sec{font:500 12px var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);margin:36px 0 14px;display:flex;align-items:center;gap:14px}
+h2.sec::after{content:"";flex:1;border-top:1px solid var(--rule-2)}
+
+/* decision entry */
+.entry{position:relative;border-top:2px solid var(--ink);padding-top:18px}
+.entry .meta{display:flex;flex-wrap:wrap;gap:6px 16px;align-items:baseline}
+.status{font:500 11px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--pen);background:#e3e8f5;padding:2px 8px;border-radius:2px}
+.entry h3{font:500 34px/1.12 var(--serif);letter-spacing:-.015em;margin:12px 0 16px;font-variation-settings:"opsz" 48}
+.entry p{margin:0 0 14px}
+sup.ref{font:500 11px var(--mono);color:var(--agent);margin-left:1px;cursor:help}
+sup.ref.hr{color:var(--human)}
+.ifsigned{margin:16px 0 0;padding:12px 18px;background:var(--sea);border-left:2px solid var(--agent);font-size:16.5px}
+.ifsigned dt{font:500 10.5px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);margin-top:6px}
+.ifsigned dt:first-child{margin-top:0}
+.ifsigned dd{margin:0}
+.ifsigned{display:grid;grid-template-columns:repeat(3,1fr);grid-auto-flow:column;grid-template-rows:auto auto;gap:2px 20px;font-size:15.5px;line-height:1.4}
+.ifsigned dt{margin-top:0!important}
+@media (max-width:760px){.ifsigned{grid-template-columns:1fr;grid-auto-flow:row;grid-template-rows:none}.ifsigned dt{margin-top:8px!important}.ifsigned dt:first-child{margin-top:0!important}}
+.pull{margin:28px 0 8px;font-size:14.5px;line-height:1.5;color:var(--ink-2);display:grid;grid-template-columns:auto 1fr;gap:16px;align-items:start}
+.pull q{font:italic 400 23px/1.2 var(--serif);color:var(--ink);quotes:"“" "”";display:block;margin-bottom:6px}
+.pull .bar{width:2px;background:var(--human);align-self:stretch}
+
+.sign{margin-top:22px;display:grid;grid-template-columns:1fr auto;gap:18px 28px;align-items:end}
+.line{position:relative;height:64px;border-bottom:1px solid var(--ink)}
+.line .x{position:absolute;left:0;bottom:6px;font:italic 20px var(--serif);color:var(--ink-3)}
+.line .sig{position:absolute;left:34px;bottom:-6px;font:400 54px/1 var(--hand);color:var(--pen);white-space:nowrap;clip-path:inset(0 100% 0 0);transition:clip-path 1.1s steps(24,end)}
+.line.signed .sig{clip-path:inset(0 0 0 0)}
+.line .cap{position:absolute;right:0;bottom:-24px;font:500 10.5px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3)}
+.under{font:500 10.5px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);margin-top:8px}
+.btns{display:flex;gap:10px;flex-wrap:wrap}
+.btn{font:500 17px var(--serif);border-radius:2px;padding:10px 20px;cursor:pointer;border:1px solid var(--ink);transition:background var(--d-fast),color var(--d-fast),transform var(--d-fast),box-shadow var(--d-fast)}
+.btn:active{transform:translateY(1px)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn.primary{background:var(--ink);color:var(--paper)}
+.btn.primary:hover{background:var(--pen);border-color:var(--pen);box-shadow:0 6px 18px -8px #1d3a8a99}
+.btn.sec{background:transparent;color:var(--ink)}
+.btn.sec:hover{background:var(--paper-2)}
+.btn.tx{border-color:transparent;background:none;font-style:italic;text-decoration:underline;text-underline-offset:4px;text-decoration-thickness:1px;padding:10px 6px;color:var(--ink-2)}
+.btn.tx:hover{color:var(--ink)}
+.declinebox{display:none;margin-top:18px}
+.declinebox.on{display:block}
+textarea{width:100%;min-height:76px;border:1px solid var(--rule-2);background:#fbf9f4;font:17px var(--serif);padding:10px 12px;color:var(--ink);border-radius:2px}
+.outcome{display:none;margin-top:30px;font-size:16.5px;color:var(--ink-2)}
+.outcome.on{display:block;animation:fade var(--d-med) var(--ease)}
+.outcome b{color:var(--ink);font-weight:500}
+@keyframes fade{from{opacity:0;transform:translateY(4px)}}
+.linkbtn{font:italic 16.5px var(--serif);background:none;border:0;color:var(--pen);text-decoration:underline;text-underline-offset:3px;cursor:pointer;padding:0}
+
+/* chapter close (milestone) */
+.colophon{display:none;text-align:center;margin:44px 0 0;padding:6px 0 4px}
+.colophon.on{display:block}
+.colophon .rule{height:1px;background:var(--ink);transform:scaleX(0);transition:transform 1.1s var(--ease-slow)}
+.colophon.on .rule{transform:scaleX(1)}
+.colophon .orn{font-size:30px;color:var(--gold);margin:10px 0 0;opacity:0;transform:translateY(6px) rotate(-8deg);transition:all .9s var(--ease) .5s;display:inline-block}
+.colophon.on .orn{opacity:1;transform:none}
+.colophon p{margin:6px 0 4px;font-style:italic;font-size:22px;opacity:0;transition:opacity .9s .8s}
+.colophon .sc{opacity:0;transition:opacity .9s 1s}
+.colophon.on p,.colophon.on .sc{opacity:1}
+
+/* live work */
+.live{list-style:none;margin:0;padding:0}
+.live li{display:grid;grid-template-columns:1fr auto;gap:4px 16px;padding:14px 0;border-bottom:1px solid var(--rule)}
+.live .by{font-size:15px;color:var(--ink-3)}
+.live .txt{font-size:18px}
+.caret{display:inline-block;width:1.5px;height:1em;background:currentColor;vertical-align:-2px;margin-left:2px;animation:blink 1.1s steps(1) infinite}
+.paused .caret{animation:none;opacity:0}
+.paused .txt{color:var(--ink-3)}
+@keyframes blink{50%{opacity:0}}
+.mini{font:500 11px var(--mono);letter-spacing:.08em;text-transform:uppercase;background:none;border:1px solid var(--rule-2);color:var(--ink-2);padding:5px 10px;border-radius:2px;cursor:pointer;align-self:center;transition:all var(--d-fast)}
+.mini:hover{border-color:var(--ink);color:var(--ink)}
+.mini:active{transform:translateY(1px)}
+.live .prog{grid-column:1/-1;font:500 10.5px var(--mono);letter-spacing:.08em;color:var(--ink-3);text-transform:uppercase}
+
+/* log */
+.log{list-style:none;margin:0;padding:0}
+.log li{display:grid;grid-template-columns:64px 1fr;gap:16px;padding:12px 0;border-bottom:1px solid var(--rule);font-size:17px}
+.log time{font:500 11px/2.2 var(--mono);color:var(--ink-3);letter-spacing:.06em}
+.log .src{display:block;font-size:14.5px;color:var(--ink-3);font-style:italic}
+.log li.new{animation:fade .6s var(--ease)}
+
+/* margin notes */
+.notes{list-style:none;margin:0;padding:0;font-size:14.5px;line-height:1.45;color:var(--ink-2)}
+.notes li{padding:10px 0 10px 0;border-top:1px solid var(--rule);display:grid;grid-template-columns:22px 1fr;transition:background var(--d-fast)}
+.notes li.hl{background:var(--sea)}
+.notes .n{font:500 11px var(--mono);color:var(--ink-3);padding-top:2px}
+.notes code{display:block;font:500 10.5px var(--mono);color:var(--ink-3);letter-spacing:.04em;margin-top:2px}
+.marg-h{margin:0 0 8px}
+.decnotes{margin-top:0}
+.aside-p{font-size:14.5px;color:var(--ink-2);line-height:1.5;margin:28px 0 0;border-top:1px solid var(--rule);padding-top:10px}
+
+footer{grid-column:1/-1;order:9;border-top:3px double var(--ink);margin-top:64px;padding:16px 0 48px;display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;font-size:15px;color:var(--ink-3);font-style:italic}
+
+/* responsive */
+@media (max-width:1180px){
+  .page{grid-template-columns:200px minmax(0,1fr);gap:0 40px}
+  .margin{grid-column:2;padding-top:0}
+  .decnotes{margin-top:0}
+}
+@media (max-width:760px){
+  html,body{font-size:17px}
+  .mast{padding:14px 20px 0}
+  .mast .center{display:none}
+  .mast .name{font-size:12px;letter-spacing:.18em}
+  .mast .right .me{display:none}
+  .page{grid-template-columns:1fr;padding:0 20px}
+  .rail{position:static;padding-top:20px;max-height:none;order:1}
+  main{order:2;padding-top:20px}
+  .margin{grid-column:auto;order:3;padding-top:0}
+  .gauge{grid-template-columns:1fr;grid-template-rows:22px auto;height:auto;gap:10px}
+  .tube{height:22px;border-radius:11px}
+  .water{top:0;bottom:0;height:auto;width:var(--lvl,46%);transition:width var(--d-slow) var(--ease-slow)}
+  .water::before{display:none}
+  .marks{flex-direction:row;justify-content:space-between}
+  .marks li{font-size:13px;text-align:center;flex:1}
+  .marks li::before{display:none}
+  .marks li.now::after{content:"tide";font-size:12px}
+  .company{display:none}
+  h1{font-size:64px}
+  .standfirst{font-size:19px}
+  h2.sec{margin:40px 0 14px}
+  .entry h3{font-size:28px}
+  .sign{grid-template-columns:1fr}
+  .btns .btn.primary{flex:1 1 100%}
+  .btns .btn.sec{flex:1}
+  .inline-notes{display:block!important}
+  .decnotes,.margin .decwrap{display:none}
+  .log li{grid-template-columns:52px 1fr;gap:10px}
+  .company-m{display:block!important}
+}
+.inline-notes{display:none;list-style:none;margin:18px 0 0;padding:0;font-size:14.5px;color:var(--ink-2)}
+.inline-notes li{padding:6px 0;border-top:1px solid var(--rule);display:grid;grid-template-columns:20px 1fr}
+.inline-notes .n{font:500 11px var(--mono);color:var(--ink-3);padding-top:2px}
+.company-m{display:none}
+.pull-i{display:none}
+@media (max-width:760px){.pull-i{display:grid}.pull-m{display:none}}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation:none!important;transition-duration:1ms!important;transition-delay:0ms!important}
+  .line .sig{transition:none}
+}
+</style>
+</head>
+<body>
+<header class="mast">
+  <div class="mast-row">
+    <span class="name">EXOFAB · LEDGER</span>
+    <span class="center">Project Exo · Moissanite Labs</span>
+    <span class="right"><span class="ex" title="All project content on this page is fictional example data">Example data</span><span class="me" style="font-size:15px">Reading as <i>Maya Okafor</i></span></span>
+  </div>
+  <hr class="dbl">
+</header>
+
+<div class="page">
+  <aside class="rail" aria-label="Stage and crew">
+    <div class="sc">Tide gauge · stage</div>
+    <div class="gauge" id="gauge" style="--lvl:57%">
+      <div class="tube" aria-hidden="true"><div class="water"></div></div>
+      <ol class="marks" id="marks" aria-label="Stages from idea to shipped">
+        <li class="done"><span class="sc">I</span>Idea</li>
+        <li class="done"><span class="sc">II</span>Shape</li>
+        <li class="now" aria-current="step"><span class="sc">III</span>Prototype</li>
+        <li><span class="sc">IV</span>Build</li>
+        <li><span class="sc">V</span>Shipped</li>
+      </ol>
+    </div>
+    <section class="company" aria-labelledby="co-h">
+      <div class="sc" id="co-h">Ship's company</div>
+      <ul>
+        <li><span class="mk h"></span><span class="who-h">Maya Okafor</span><small>lead · signs decisions</small></li>
+        <li><span class="mk h"></span><span class="who-h">Teo Lindqvist</span><small>design · signs decisions</small></li>
+        <li><span class="mk h"></span><span class="who-h">Ana Ruiz</span><small>field volunteer · reviews</small></li>
+        <li><span class="mk a"></span><span class="who-a">Scout</span> <small>research agent v0.6 · drafts</small></li>
+        <li><span class="mk a"></span><span class="who-a">Loom</span> <small>prototyping agent v0.4 · drafts</small></li>
+        <li><span class="mk a"></span><span class="who-a">Keel</span> <small>release agent v0.3 · proposes</small></li>
+      </ul>
+      <p style="font-size:13.5px;color:var(--ink-3);margin:12px 0 0;line-height:1.4"><span class="mk h"></span>person, set in italic<br><span class="mk a"></span>agent, set in small caps</p>
+    </section>
+  </aside>
+
+  <main>
+    <div class="kicker"><span class="sc">Vol. 014</span><span class="sc">Chapter III · Prototype</span><span class="sc">Sat 31 Oct</span></div>
+    <h1>Tidepool</h1>
+    <p class="standfirst">A field journal for marine volunteers. Log tide-pool sightings offline, with wet hands; they sync later to a shared reef map.</p>
+
+    <h2 class="sec">Awaiting your signature</h2>
+    <article class="entry" id="entry" aria-labelledby="e-h">
+      <div class="meta"><span class="status" id="status">Entry 07 · unsigned</span><span style="font-size:15.5px;color:var(--ink-3)">proposed by <span class="who-a a">Keel</span>, agent · 14 minutes ago</span></div>
+      <h3 id="e-h">Send Prototype 3 to twelve volunteer testers.</h3>
+      <p>All eleven pieces of the prototype have been reviewed, and Teo closed the last open issue, about tap targets for gloved hands, this morning.<sup class="ref hr" data-n="3">3</sup> Ana's field note says the next useful signal will only come from real tide pools.<sup class="ref hr" data-n="1">1</sup> Scout's memo sets out how testers should behave around the reef,<sup class="ref" data-n="2">2</sup> and Loom's build is ready to install.<sup class="ref" data-n="4">4</sup> Twelve matches the cohort you chose last round.</p>
+      <ol class="inline-notes" aria-label="Sources">
+        <li><span class="n">1</span><span><span class="mk h"></span><span class="who-h">Ana</span>, field note #14 · n14·c3e1</span></li>
+        <li><span class="n">2</span><span><span class="mk a"></span><span class="who-a">Scout</span>, reef-etiquette memo · r22·9a07</span></li>
+        <li><span class="n">3</span><span><span class="mk h"></span><span class="who-h">Teo</span>, design review r3 · dr3·51bd</span></li>
+        <li><span class="n">4</span><span><span class="mk a"></span><span class="who-a">Loom</span>, Prototype 3 build · p3·e84f</span></li>
+      </ol>
+      <dl class="ifsigned">
+        <dt>If you sign</dt><dd>Twelve Point Lobos volunteers get an invitation.</dd>
+        <dt>What is shared</dt><dd>Build 0.3.2; locations rounded to 1 km.</dd>
+        <dt>How to undo</dt><dd>Revoke anytime; the build expires in 30 days.</dd>
+      </dl>
+
+      <div class="pull pull-i"><span class="bar" aria-hidden="true"></span><div><q>Learning a preference does not grant permission.</q>You signed a similar entry on 12 October. Keel has noted that you prefer small cohorts, and asks anyway.</div></div>
+      <div class="sign" id="signarea">
+        <div>
+          <div class="line" id="line"><span class="x" aria-hidden="true">×</span><span class="sig" id="sig" aria-hidden="true">Maya Okafor</span></div>
+          <div class="under">Signature · Maya Okafor, lead</div>
+        </div>
+        <div class="btns" id="actions">
+          <button class="btn primary" id="approve">Sign &amp; approve</button>
+          <button class="btn sec" id="decline">Decline</button>
+        </div>
+      </div>
+      <div style="margin-top:8px"><button class="btn tx" id="revise">Return to Keel with questions</button></div>
+      <div class="declinebox" id="declinebox">
+        <label class="sc" for="why" style="display:block;margin-bottom:6px">A note for Keel, optional</label>
+        <textarea id="why" placeholder="For instance: wait for Scout's species list first."></textarea>
+        <div class="btns" style="margin-top:10px"><button class="btn sec" id="confirmDecline">Decline the entry</button><button class="btn tx" id="cancelDecline">Back</button></div>
+      </div>
+      <div class="outcome" id="outcome" role="status"></div>
+      <div class="colophon" id="colophon" role="status" aria-live="polite">
+        <div class="rule"></div>
+        <span class="orn" aria-hidden="true">❦</span>
+        <p>Here ends Chapter III, <span style="font-style:normal">Prototype</span>.</p>
+        <div class="sc">12 pieces · 5 by people · 7 by agents · Chapter IV, Build, begins</div>
+      </div>
+    </article>
+
+    <h2 class="sec">Being written now</h2>
+    <ul class="live">
+      <li><div><div class="by"><span class="mk a"></span><span class="who-a a">Loom</span> is drafting</div><div class="txt">The offline-sync screen: empty, syncing and error states<span class="caret" aria-hidden="true"></span></div></div><button class="mini" data-pause aria-pressed="false">Pause</button><div class="prog">3 of 5 states drafted · from Ana's note #14</div></li>
+      <li><div><div class="by"><span class="mk a"></span><span class="who-a a">Scout</span> is compiling</div><div class="txt">A species list for the Central Coast intertidal<span class="caret" aria-hidden="true"></span></div></div><button class="mini" data-pause aria-pressed="false">Pause</button><div class="prog">41 of ~110 species · from Maya's request</div></li>
+      <li><div><div class="by"><span class="mk h"></span><span class="who-h h">Teo</span> is reviewing</div><div class="txt">The observation card, at glove size<span class="caret" aria-hidden="true"></span></div></div><span></span><div class="prog">4 of 5 screens · from Loom's build p3</div></li>
+    </ul>
+
+    <h2 class="sec">The log</h2>
+    <ol class="log" id="log">
+      <li><time>09:42</time><div><span class="mk h"></span><span class="who-h">Teo</span> closed the “glove taps” issue.<span class="src">from Ana's field note #14 · reviewed by Maya · dr3·51bd</span></div></li>
+      <li><time>08:15</time><div><span class="mk a"></span><span class="who-a">Loom</span> built Prototype 3.<span class="src">from Teo's card spec and Scout's memo r22 · p3·e84f</span></div></li>
+      <li><time>YEST.</time><div><span class="mk a"></span><span class="who-a">Scout</span> wrote the reef-etiquette memo.<span class="src">at Maya's request · six sources cited · r22·9a07</span></div></li>
+      <li><time>YEST.</time><div><span class="mk h"></span><span class="who-h">Ana</span> logged field note #14.<span class="src">Point Lobos, low tide −0.4 ft · n14·c3e1</span></div></li>
+      <li><time>29 OCT</time><div><span class="mk h"></span><span class="who-h">Maya</span> signed entry 06, offline-first sync.<span class="src">proposed by Keel · d06·0b2c</span></div></li>
+    </ol>
+    <section class="company company-m" aria-label="Ship's company">
+      <h2 class="sec">Ship's company</h2>
+      <ul style="list-style:none;margin:0;padding:0">
+        <li style="padding:7px 0;border-top:1px solid var(--rule)"><span class="mk h"></span><span class="who-h">Maya Okafor</span><small style="color:var(--ink-3)">lead, signs</small></li>
+        <li style="padding:7px 0;border-top:1px solid var(--rule)"><span class="mk h"></span><span class="who-h">Teo Lindqvist</span><small style="color:var(--ink-3)">design, signs</small></li>
+        <li style="padding:7px 0;border-top:1px solid var(--rule)"><span class="mk h"></span><span class="who-h">Ana Ruiz</span><small style="color:var(--ink-3)">field volunteer, reviews</small></li>
+        <li style="padding:7px 0;border-top:1px solid var(--rule)"><span class="mk a"></span><span class="who-a">Scout</span><small style="color:var(--ink-3)">research agent, drafts</small></li>
+        <li style="padding:7px 0;border-top:1px solid var(--rule)"><span class="mk a"></span><span class="who-a">Loom</span><small style="color:var(--ink-3)">prototyping agent, drafts</small></li>
+        <li style="padding:7px 0;border-top:1px solid var(--rule)"><span class="mk a"></span><span class="who-a">Keel</span><small style="color:var(--ink-3)">release agent, proposes</small></li>
+      </ul>
+    </section>
+  </main>
+
+  <aside class="margin" aria-label="Margin notes: provenance">
+    <div class="decwrap">
+      <div class="sc marg-h decnotes">Sources for entry 07</div>
+      <ol class="notes" id="notes">
+        <li data-n="1"><span class="n">1</span><span><span class="mk h"></span><span class="who-h">Ana Ruiz</span>, field note #14. Written at Point Lobos at low tide.<code>n14·c3e1 · human</code></span></li>
+        <li data-n="2"><span class="n">2</span><span><span class="mk a"></span><span class="who-a">Scout</span>, reef-etiquette memo. Six sources, all linked.<code>r22·9a07 · agent · reviewed by Maya</code></span></li>
+        <li data-n="3"><span class="n">3</span><span><span class="mk h"></span><span class="who-h">Teo Lindqvist</span>, design review, round 3.<code>dr3·51bd · human</code></span></li>
+        <li data-n="4"><span class="n">4</span><span><span class="mk a"></span><span class="who-a">Loom</span>, Prototype 3 build 0.3.2.<code>p3·e84f · agent · reviewed by Teo</code></span></li>
+      </ol>
+      <div class="pull pull-m"><span class="bar" aria-hidden="true"></span><div><q>Learning a preference does not grant permission.</q>You signed a similar entry on 12 October. Keel has noted that you prefer small cohorts, and asks anyway.</div></div>
+      <p class="aside-p"><span class="sc" style="display:block;margin-bottom:4px">Why this needs you</span>It reaches people outside the crew. Agents on Tidepool may draft and propose, but anything sent to outsiders is signed by a person.</p>
+    </div>
+  </aside>
+
+  <footer><span>Exofab, a Moissanite Labs proposal. Design exploration; every name and entry is example data.</span><span>Different minds. Shared possibility.</span></footer>
+</div>
+<div class="sr" aria-live="assertive" id="announce"></div>
+
+<script>
+(()=>{
+const $=id=>document.getElementById(id), reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+// refs highlight notes
+document.querySelectorAll('sup.ref').forEach(s=>{s.tabIndex=0;const n=document.querySelector('#notes li[data-n="'+s.dataset.n+'"]');const on=()=>n&&n.classList.add('hl'),off=()=>n&&n.classList.remove('hl');s.addEventListener('mouseenter',on);s.addEventListener('mouseleave',off);s.addEventListener('focus',on);s.addEventListener('blur',off);s.setAttribute('aria-label','Source '+s.dataset.n);});
+document.querySelectorAll('[data-pause]').forEach(b=>b.addEventListener('click',()=>{const p=b.closest('li').classList.toggle('paused');b.setAttribute('aria-pressed',p);b.textContent=p?'Resume':'Pause';}));
+const today=new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short'});
+function approve(){
+  $('approve').disabled=true;$('decline').disabled=true;
+  $('line').classList.add('signed');
+  setTimeout(()=>{
+    $('actions').style.display='none';$('revise').parentNode.style.display='none';
+    $('status').textContent='Entry 07 · signed';$('status').style.background='#e6efe3';$('status').style.color='#2f5a2a';
+    $('outcome').innerHTML='<b>Signed by you, '+today+'.</b> Keel is sending twelve invitations; the entry, its reasoning and its four sources are now part of the record (d07·f1a9). <button class="linkbtn" id="revoke">Revoke the invitations</button>';
+    $('outcome').classList.add('on');
+    const li=document.createElement('li');li.className='new';li.innerHTML='<time>NOW</time><div><span class="mk h"></span><span class="who-h">You</span> signed entry 07, sending Prototype 3 to testers.<span class="src">proposed by Keel · four sources kept · d07·f1a9</span></div>';$('log').prepend(li);
+    setTimeout(milestone,reduce?0:200);
+  },reduce?0:1150);
+}
+function milestone(){
+  $('gauge').style.setProperty('--lvl','80%');
+  const m=document.querySelectorAll('#marks li');m[2].classList.replace('now','done');m[2].removeAttribute('aria-current');m[3].classList.add('now');m[3].setAttribute('aria-current','step');
+  setTimeout(()=>{$('colophon').classList.add('on');$('announce').textContent='Chapter three, Prototype, is complete. Chapter four, Build, begins.';},reduce?0:900);
+}
+$('approve').addEventListener('click',approve);
+$('decline').addEventListener('click',()=>{$('actions').style.display='none';$('declinebox').classList.add('on');$('why').focus();});
+$('cancelDecline').addEventListener('click',()=>{$('actions').style.display='';$('declinebox').classList.remove('on');$('decline').focus();});
+$('confirmDecline').addEventListener('click',()=>{$('declinebox').classList.remove('on');$('revise').parentNode.style.display='none';$('status').textContent='Entry 07 · declined';$('outcome').innerHTML='<b>Declined by you, '+today+'.</b> Nothing was sent. Keel keeps the draft and will not ask again until something changes.';$('outcome').classList.add('on');});
+$('revise').addEventListener('click',()=>{$('outcome').innerHTML='Returned to Keel with your questions. The entry stays unsigned until you decide.';$('outcome').classList.add('on');});
+$('outcome').addEventListener('click',e=>{if(e.target.id==='revoke')e.target.outerHTML='<i>Invitations revoked.</i>';});
+function align(){const w=document.querySelector('.margin .decwrap'),p=document.querySelector('#entry p');if(!w||!p)return;w.style.marginTop='0';if(innerWidth<=1180)return;const d=p.getBoundingClientRect().top-w.getBoundingClientRect().top;w.style.marginTop=Math.max(0,d)+'px';}
+addEventListener('resize',align);document.fonts&&document.fonts.ready.then(align);align();
+window.__approve=approve;
+})();
+</script>
+</body>
+</html>
