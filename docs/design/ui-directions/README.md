@@ -2,19 +2,39 @@
 
 Design exploration for Exofab’s core **project forge** view: a place where an idea moves toward shipping with a mixed crew of people and agents. The signature moment modeled in each prototype is a person **approving an agent’s proposal** with its reasoning and source provenance visible before they commit.
 
-This folder is **reference material for team review**, not an adopted UI stack, dependency set, or product decision. Open the HTML files in a browser locally; there is no build step.
+This folder is **design reference** for the chosen direction and earlier explorations. It is not a runnable product, adopted dependency set, or implementation stack. Open the HTML files in a browser locally; there is no build step.
 
-All project content on these screens is **example data** (fictional project *Tidepool*, people such as Maya Okafor, agents such as Keel, hashes, counts, and timestamps). See [SPEC.md](./SPEC.md) for design tokens, component states, and interaction choreography per direction.
+All project content on these screens is **example data** (fictional project *Tidepool*, people such as Maya Okafor, agents such as Keel, hashes, counts, and timestamps). See [SPEC.md](./SPEC.md) for design tokens, component states, and interaction choreography.
 
-## Direction 1 · Crystal Lattice
+## Direction 4 · Crystal Lattice merged (chosen)
+
+**Decided 2026-11-03 by the user:** option (a) — Crystal Lattice with Field Ledger’s margin sources and signature moment.
+
+![Crystal Lattice merged desktop](./shots/4-crystal-lattice-merged-desktop.png)
+
+**Open:** [4-crystal-lattice-merged.html](./4-crystal-lattice-merged.html)
+
+Keel’s reasoning uses **margin source notes** numbered in reading order; hovering or focusing a superscript ref (or a note) lights the matching note, provenance thread, and **crystal node**. On approve, **Maya’s signature** draws in luminous ink on the signature line, then the prototype ring **crystallizes** with the prismatic milestone toast; **Revoke** stays available after signing.
+
+**Measured (mobile, Lighthouse 12, local server):** Performance 97, Accessibility 100.
+
+**Unverified:** real screen readers; Safari and Firefox.
+
+**Screenshots:** committed PNGs were captured before a small fix reordered source superscripts in the reasoning paragraph to 1–4 in reading order; the live prototype reflects the fix.
+
+## Earlier directions (reference)
+
+These three prototypes remain for comparison and token reference; they are not the chosen UI.
+
+### Direction 1 · Crystal Lattice
 
 Dark, luminous “lab” mood: the project as a growing crystal lattice; the approval panel is the brightest object on the page.
 
 ![Crystal Lattice desktop](./shots/1-crystal-lattice-desktop.png)
 
-**Open:** [1-crystal-lattice.html](./1-crystal-lattice.html) (file URL or “Open with Live Server” in an editor).
+**Open:** [1-crystal-lattice.html](./1-crystal-lattice.html)
 
-## Direction 2 · Workshop Bench
+### Direction 2 · Workshop Bench
 
 Light, tactile maker’s-bench mood: cards, stamps, and bench clutter; approval reads like signing off on a work order.
 
@@ -22,7 +42,7 @@ Light, tactile maker’s-bench mood: cards, stamps, and bench clutter; approval 
 
 **Open:** [2-workshop-bench.html](./2-workshop-bench.html)
 
-## Direction 3 · Field Ledger
+### Direction 3 · Field Ledger
 
 Editorial, calm ship’s-log mood: margin notes and ledger entries; approval reads like signing an entry.
 
@@ -32,24 +52,8 @@ Editorial, calm ship’s-log mood: margin notes and ledger entries; approval rea
 
 Additional captures (mobile, full-page, post-approval) live under [shots/](./shots/) and [shots/full/](./shots/full/). Screenshot helpers that need Playwright locally are in [tools/](./tools/) (not a repo dependency).
 
-## Decision needed
+## Later option (not decided)
 
-The team should choose one of the following (or record a variant):
+Offering **all three original directions as user-selectable skins/layouts** over one shared data model and component set is still a possible later product choice, not a current decision. If pursued, the recommended approach is a single semantic component contract with per-skin tokens and layout templates; the crystal lattice (and merged variant) remains a bespoke visualization other skins would not share.
 
-| Option | Description |
-| --- | --- |
-| **(a)** | **Crystal Lattice** with **Field Ledger’s signature moment** and **margin sources** (designer’s pick) |
-| **(b)** | **Crystal Lattice** as in [1-crystal-lattice.html](./1-crystal-lattice.html) |
-| **(c)** | **Workshop Bench** |
-| **(d)** | **Field Ledger** |
-| **(e)** | Offer **all three as user-selectable skins/layouts** over one shared data model and component set |
-
-If **(e)** is chosen, the recommended approach is a **single semantic component contract** (crew, stages, pending decision, provenance, trace, approve/decline/revise) with **per-skin design tokens and layout templates**. The open cost is that the **crystal lattice visualization is a bespoke component** the other skins do not share; Workshop and Field Ledger can reuse more of the same structural components.
-
-Record the outcome in [docs/roadmap.md](../../roadmap.md) when decided.
-
-## Not verified
-
-- Lighthouse not run on these static prototypes
-- No screen-reader pass beyond what is noted in SPEC.md
-- Google Fonts fallback behavior untested (prototypes load fonts from the network)
+Record product decisions in [docs/roadmap.md](../../roadmap.md).

@@ -163,8 +163,142 @@ Approve → buttons disable → "Maya Okafor" writes itself across the signature
 
 ---
 
+## Direction 4 · Crystal Lattice merged (chosen) (`4-crystal-lattice-merged.html`)
+
+This is Crystal Lattice with Field Ledger's provenance and signature, redrawn in Crystal's visual language. Everything from Direction 1 still applies unless this section changes it. All content is example data.
+
+### What changed vs Direction 1
+- **Layout**
+  - Desktop now has two rows instead of the 300 / 1fr / 400 grid. The top row is the crystal (`minmax(0,1fr)`) beside the decision (820 px, 760 px at ≤1360). Below it, a `.lower` row holds Crew, Live work and Trace (1fr / 1fr / 2fr, stretched to equal height).
+  - ≤1180: one column with the decision first. The lower row becomes two columns, with Trace full width.
+  - ≤760: everything stacks.
+- **Lattice tidy-up**
+  - The viewBox is tightened to `-204 -184 408 368`, so the crystal fills its panel.
+  - Ghost dots appear only on rings 3–4, and the ring-4 guide is dashed.
+  - Each forming node sits next to the bonded node it grows from and is joined to it by a dashed `.edge.grow`, so nothing floats.
+  - The empty band under the lattice is gone. In its place, the **census strip** replaces the old ring-key pills.
+- **Census strip (ring key)**
+  - Five buttons, one per ring. Each shows the stage number, name, count and a human/agent split bar; the pending piece is shown as a dashed segment.
+  - The current ring gets a glowing ice dot (desktop) or an ice inset bar (mobile).
+  - Mobile shows it as a 5-row list.
+  - Screen-reader text gives the ring and "current stage".
+  - Footer: "18 bonded · 9 human · 9 agent · 1 awaits you · 3 forming". It updates to "19 bonded · 9 human · 10 agent · 3 forming" after signing.
+- **Provenance threads:** dotted quadratic curves run from the pending node (Prototype ring) to each source node (1 Ana, 2 Scout, 3 Teo, 4 Loom).
+
+### New / changed tokens
+| Token | Value | Use |
+|---|---|---|
+| `--s0` | `#0a0c0e` | census tiles, inset wells |
+| `--ok-dim` | `#12291d` | "Signed" pill fill |
+| `--ink` | `#dff1ff` | signature stroke (gradient `#inkg` ice → silicon) |
+| `--ink-glow` | `#7cc6f2` | signature glow: `drop-shadow(0 0 5px #7cc6f2aa) drop-shadow(0 0 14px #7cc6f244)` |
+| `--note-hl` | `#14202b` | highlighted margin note fill, plus inset `#2a4658` hairline |
+| `--ease-pen` | `cubic-bezier(.45,.05,.55,.95)` | pen-like motion |
+| `--d-sign` | `1200ms` | signature draw |
+| Ref chips | silicon `#7cc6f2` on `#11202b` (8.9:1) · carbon `#f2ab6d` on `#22180f` (9.0:1) · lit state inverts with a 10 px glow | superscript refs |
+| Signature hint | `--tx3` `#868e98` on `#0e1012` (5.8:1) | "your signature goes here" |
+| Font fallbacks | `Geist Fallback` (Arial/Liberation Sans, size-adjust 102.19%), `Geist Mono Fallback` (100%), `Instrument Serif Fallback` (Times/Liberation Serif, 86.39%), with measured ascent/descent overrides | cuts layout shift while Google Fonts load (loaded non-blocking via preload + `media=print` swap, `<noscript>` fallback) |
+
+The rest is unchanged from D1: `--bg #08090a`, `--s1 #0e1012`, `--tx3 #868e98`, `--carbon #f2ab6d`, `--silicon #7cc6f2`, `--ice #e9f4ff`, `--ok #8fe0b0`, focus `#ffd79a`.
+
+### Margin sources (component)
+- **Structure**
+  - One DOM list (`#notes`) sits in an `aside.margin` inside the decision. A container query on `.decision` (`container-type:inline-size`) places it:
+    - ≥700 px container: a right margin column (≈236 px, left hairline) beside the reasoning.
+    - Below that: inline under the "If you sign" block, with a **Hide / Show** toggle (`#srcToggle`, `aria-expanded`, `aria-controls="notes"`), open by default.
+  - Each note shows its number chip, the human dot or agent diamond, the name, a PERSON / AGENT vN label, the source line, and `id · reviewed by <name>` in mono.
+  - The reasoning has four superscript `.ref` links (`href="#src-n"`, each with an `aria-label` naming the source, e.g. "Source 3: Teo Lindqvist, design review round 3").
+- **States**
+  | State | Ref | Note | Crystal |
+  |---|---|---|---|
+  | rest | tinted chip (silicon = agent, carbon = person) | plain | thread dotted at 22% |
+  | hover / focus on ref | chip inverts + glow | `.hl` fill `--note-hl` + inset hairline | source node `.hlring`, pending node ring, thread solid with `#spec` gradient, 2 px |
+  | hover / focus on note | matching ref inverts | `.hl` | same as above |
+  | focus-visible | 2 px `#ffd79a` outline | 2 px `#ffd79a` outline | n/a |
+  | ref clicked while notes collapsed (mobile) | n/a | notes expand, then scroll and focus the note | n/a |
+  | trace row hover / focus | n/a | n/a | lights the node it came from (unchanged from D1) |
+
+### "If you sign" block and principle
+- **Consequences block:** `dl.conseq` in three columns (one column ≤760), with these entries:
+  - If you sign: "12 Point Lobos volunteers get an invite."
+  - What is shared: "Build 0.3.2. Locations rounded to 1 km; no contacts."
+  - How to undo: "Revoke anytime. The build expires in 30 days."
+- **Principle:** `figure.principle` has a 2 px carbon→silicon rule, the quote "Learning a preference does not grant permission." in Instrument Serif italic 22 px (21 mobile), and a figcaption: "You approved a similar send on Oct 12. Keel noted that you prefer small cohorts, and is asking anyway."
+
+### Signature (component)
+- **Signature line:** a `×` mark, the hint, an absolutely positioned `svg#sig` (290 px wide, sitting 14 px below the line so the descenders cross it), and the caption "Signature · Maya Okafor, lead / approves sends to outsiders". Once signed, the caption reads "Signed hh:mm · record d07·f1a9".
+- **Glyphs:** "Maya Okafor" comes from the Hershey *scripts* single-stroke font, converted to smooth Catmull-Rom bezier paths (10 strokes), plus one underline flourish. The paths are inline, with no font dependency.
+- **States**
+  | State | What you see |
+  |---|---|
+  | unsigned | hint visible, paths hidden |
+  | signing | hint fades; strokes draw in order with a glowing nib (`#nib`) riding the pen point; buttons disabled, primary reads "Signing…" |
+  | signed | full luminous ink with glow, hint gone |
+  | revoked | ink at 35% opacity, glow removed, a `--tx2` strike line scales across (320 ms) |
+  | declined | the line stays unsigned; the decision greys (`.closed`) |
+  | reduced motion | name appears instantly; no nib, fire, glints or toast motion |
+
+### Approval choreography (timings)
+1. **t = 0** Sign & approve (click, Enter or Space)
+   - All three actions disable and the primary reads "Signing…".
+   - Polite live region: "Signing decision 07 as Maya Okafor."
+2. **0 → 1200 ms** The signature draws.
+   - Each stroke gets a share of 1200 ms proportional to its length (minimum 60 ms), with 40 ms pen-lift gaps.
+   - Each stroke eases in and out.
+   - The nib follows `getPointAtLength`.
+3. **≈1200 ms finalize**
+   - Header: "Decision 07 · approved". Pill: **Signed** (`--ok` on `--ok-dim`).
+   - The outcome card appears with the stamp "✓ Signed by Maya Okafor (you) · time", the summary and **Revoke invites**. Focus moves to the outcome (`tabindex=-1`, no outline, border brightens).
+   - The pending node solidifies (pulse removed, gradient fill, glint).
+   - Trace gains "You signed decision 07 · d07·f1a9".
+   - Live region: "Approved. Signed by Maya Okafor…".
+4. **+250 ms (settle)** `.crystallized`
+   - Prismatic fire strokes around the Prototype ring (1.8 s, dash draw then rest at 55%).
+   - Ring-2 glints (1.4 s each, 60 ms stagger, 300 ms delay).
+   - The stage track moves to Build. The census marks Prototype 12 of 12 and Build as current. The footer counts and the lattice `aria-label` update.
+5. **+900 ms** The milestone toast slides up: "003 / Prototype *crystallized* · 12 pieces · 5 human · 7 agent. Next ring: Build."
+   - Second live region: "Milestone: Prototype stage crystallized…".
+   - The toast hides itself after 9 s, waiting while it is hovered or focused. Close returns focus to the outcome.
+- **Decline:** opens an inline box with an **optional** reason (textarea, focused). Confirming does the following:
+  - Pill: **Declined**; the dot goes grey.
+  - Outcome: "Nothing was sent. Keel kept the draft and will not re-ask until something changes.", plus "Your note to Keel: "…"" when a reason was given (HTML-escaped).
+  - Focus moves to the outcome, and the change is announced. Cancel returns focus to Decline.
+- **Revoke** (available any time after signing):
+  - The signature is struck and dims. Pill: **Revoked**; header: "invites revoked"; the dot goes grey.
+  - The toast is dismissed.
+  - Trace gains "You revoked the decision 07 invites · d07·r1".
+  - Focus stays on the outcome, and the change is announced.
+- **Ask Keel to revise:** the outcome line says the decision stays open; announced.
+- **Reduced motion** (`prefers-reduced-motion: reduce`): every delay is 0 and transitions/animations are 1 ms. The name, fire end-state and toast appear at once.
+
+### Verification for D4
+- Screenshots:
+  - `shots/4-crystal-lattice-merged-{desktop,mobile}.png`
+  - `shots/full/4-crystal-lattice-merged-{desktop,mobile}-full.png`
+  - `shots/full/4-crystal-lattice-merged-{desktop,mobile}-approved.png`
+- `overflow.js` at 390 px: scrollWidth 390, with no overflowing elements.
+- Scripted checks in Playwright Chromium, with no console or page errors:
+  - hover on a ref lights the ref, note, node and thread
+  - focus on a note lights the same set
+  - keyboard approve shows the focus ring, the mid-draw nib and the outcome focus
+  - both live regions announce
+  - revoke works
+  - mobile Hide toggle works
+  - decline with a reason is echoed back
+  - reduced motion is instant
+- Lighthouse 12, mobile form factor, served from a local `http.server`, Playwright Chromium 1248:
+  - **Performance 97, Accessibility 100**
+  - FCP / LCP 1.7 s, TBT 0 ms, CLS 0.088
+  - The remaining flags are text compression and document latency, which are artefacts of the local Python server.
+- Not verified:
+  - Real screen readers (VoiceOver/NVDA)
+  - Safari/Firefox rendering of the SVG filters and container queries
+  - Real font-loading on slow networks beyond the Lighthouse throttle
+
+---
+
 ## Not verified
-- Lighthouse was not run. Each page is a single HTML file with inline CSS/JS, no libraries and only Google Fonts, so a mobile score of 80+ is plausible but not measured.
+- Lighthouse was run only for Direction 4 (mobile: Performance 97, Accessibility 100). Directions 1–3 were not measured.
 - Fonts are installed locally on the build machine, so the screenshots show the intended faces. Google Fonts loading and the system-font fallback were not checked in a clean browser.
 - Not tested with a screen reader. Keyboard focus order was reviewed in the markup but not walked through on video.
 - Contrast was computed for the main text pairs only, not for every state (for example hover tints).

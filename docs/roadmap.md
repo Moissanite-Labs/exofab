@@ -15,6 +15,6 @@ This is a proposed sequence for discussion, not an approved delivery schedule or
 | Product scope and implementation | Open. The overview calls Exofab an early proposal. |
 | Architecture, stack, deployment, license, and first milestone | Not established by the available project records. |
 | External research | Research references are not adoption decisions. |
-| UI direction | Proposal: three directions for review in [docs/design/ui-directions/](design/ui-directions/); not decided. |
+| UI direction | Decided 2026-11-03 by the user: Crystal Lattice merged ([docs/design/ui-directions/4-crystal-lattice-merged.html](design/ui-directions/4-crystal-lattice-merged.html)). Skins remain a possible later option. |
 
 Record future decisions here or link to a durable decision record. Include the decision, rationale, date, owner, and consequences; distinguish a proposal from an approved decision.
