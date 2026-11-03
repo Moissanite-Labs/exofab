@@ -58,7 +58,7 @@ All names are fictional. The example follows the sequence Koinos recommends for 
 | Express interest in a role | A person other than the brief owner | The brief and role | Hub log; visible to owner and candidate |
 | Accept or decline interest | The brief owner | Candidate profile and note | Hub log; acceptance adds a team member |
 | Nominate an agent | The agent's registered principal, on the team | The agent's identity | Hub log |
-| Start the record | Any listed human, who becomes steward (Exofab proposes: the brief owner) | The exact participant list | Koinos `project.created` |
+| Start the record | The brief owner, who becomes steward (Exofab proposal; Koinos itself lets any listed human sign genesis) | The exact participant list | Koinos `project.created` |
 | Propose the charter | The steward | The exact terms text and digest | Koinos `agreement.proposed` |
 | Consent or withdraw consent | Each named party | The exact terms text and digest | Koinos `agreement.consented` or `agreement.withdrawn` |
 | Delegate a scoped task | A human party, once every party currently consents (Exofab policy 2: only to their own agent) | Agent, agreement, expiry | Koinos `delegation.granted` |
@@ -76,7 +76,7 @@ The table names who may act; Koinos 0.1 adds further preconditions, such as curr
 3. **Bytes are held, not just referenced.** Terms and artifacts must be stored in the hub before a record cites them, using content-addressed [RFC 6920](https://www.rfc-editor.org/rfc/rfc6920) `ni:///sha-256;…` URIs. Reviewers then always review the exact bytes, and URIs carry no local paths.
 4. **Agents cannot act socially.** Agent credentials cannot publish briefs, express interest, accept matches, consent, review, or accept. They can only submit contributions under an active delegation.
 5. **Private by default.** A project's records and bytes are visible only to its participants. Profiles and briefs are visible in the hub only when their owners list them, except to people the hub has already put in contact: a brief's owner and its candidates, and teammates.
-6. **Plausible times.** A record's time must be close to the hub's clock, in addition to Koinos's nondecreasing-time rule.
+6. **Plausible times.** A record's time must be no more than ten minutes before and no more than two minutes after the hub's clock, in addition to Koinos's nondecreasing-time rule. A delegated submission or acceptance is refused once its delegation has expired by the hub's clock, so the window cannot extend a delegation.
 
 ## How the slice uses Koinos
 
@@ -99,6 +99,8 @@ Consequences of Koinos 0.1 that the slice must handle explicitly:
 - **The delegation must outlive acceptance.** An expired or revoked grant makes that contribution permanently unacceptable, so the interface should warn when a review is still pending near expiry.
 - **There is no evidence field.** Test evidence lives inside the digested artifact bytes, for example a Synbios task export, or in the summary.
 - **A shorter history still verifies.** Exofab must keep a trusted `{project, head}` pin outside the bundle to detect rollback.
+- **A dispute marks accepted work as contested.** Only an accepted contribution can be disputed, by any human party, with a reason. It becomes `disputed`, which is terminal in Koinos 0.1, and its acceptance stays in the history ([koinos docs/protocol.md:21](https://github.com/Moissanite-Labs/koinos/blob/5b5f4f9eaffe45a718601744366b8ac507ffc4b6/docs/protocol.md#L21)). Whether disputed work still counts as credit is open; the proposal is to show it as accepted, then disputed, never to hide it.
+- **Withdrawal does not undo acceptance.** Withdrawing consent blocks new delegation, submission, and acceptance under that agreement until the party consents again. Earlier acceptances stand, and reviews and disputes remain available ([koinos docs/protocol.md:21](https://github.com/Moissanite-Labs/koinos/blob/5b5f4f9eaffe45a718601744366b8ac507ffc4b6/docs/protocol.md#L21)).
 
 ## How the slice can use Synbios
 
@@ -107,6 +109,28 @@ Synbios is optional for validating the slice and recommended for the milestone 3
 The proposed order is forge review first, then the Koinos submission, review, and acceptance. The Koinos digest then covers the tests and the forge review. The cost is that a person reviews twice, once in each system, unless a later adapter combines the two steps.
 
 Synbios 0.1 is loopback-only, cannot store external references except in task text, and leaves grants out of its export. Those limits are listed in [ecosystem boundaries](ecosystem.md#gaps-found-in-sibling-repositories) as candidate upstream issues, not Exofab work.
+
+## Refusal rules
+
+Each rule below names a request the hub refuses. Rules marked Koinos restate Koinos 0.1; rules marked hub are this proposal's policies, which only narrow Koinos.
+
+1. **R-1 (Koinos).** A record whose id does not match its content, or whose signature does not verify for its actor's key.
+2. **R-2 (Koinos).** Proposing terms or accepting a contribution by anyone but the steward.
+3. **R-3 (Koinos).** Consent or withdrawal by someone who is not a named party, and a second active consent by the same party.
+4. **R-4 (Koinos).** Delegation, submission, or acceptance while any party lacks current consent.
+5. **R-5 (Koinos).** A delegation to a non-agent, with a past expiry, or with any scope other than `contribution.submit`; revocation by anyone but the grantor.
+6. **R-6 (Koinos).** A submission by an agent without its own active delegation, and acceptance of delegated work once that delegation is expired or revoked.
+7. **R-7 (Koinos).** A review by the submitter, the principal, or anyone who is not a human party.
+8. **R-8 (Koinos).** Acceptance that does not cite the latest review, or whose latest review does not approve; a second acceptance.
+9. **R-9 (Koinos).** A dispute of a contribution that is not accepted.
+10. **R-10 (hub, policy 1).** A record whose actor is not the authenticated person or agent.
+11. **R-11 (hub).** A record that does not extend the current head. The client builds and signs again.
+12. **R-12 (hub, policy 6).** A record time outside the window, and delegated work after the delegation has expired by the hub's clock.
+13. **R-13 (hub, policy 3).** Terms or an artifact cited before their bytes are stored.
+14. **R-14 (hub, policy 2).** A delegation to an agent registered under someone else's account.
+15. **R-15 (hub, policy 4).** Any signed record by an agent other than a contribution submission, and any social action by an agent: publishing, expressing interest, accepting a match, or nominating.
+16. **R-16 (hub).** Starting the record by anyone but the brief owner, with a participant list that differs from the team, or with fewer than two people.
+17. **R-17 (hub, policy 5).** A read of a project's records or bytes by a non-participant.
 
 ## Acceptance criteria
 
@@ -119,7 +143,7 @@ The slice is ready for review when each of these can be shown, using synthetic d
 5. A review by the submitter or the principal is refused.
 6. The exported bundle verifies unchanged with Exofab's verifier and with the Koinos reference verifier. Re-importing it yields the same head, participants, and attribution.
 7. A reader can trace an accepted contribution to its artifact bytes and to the agreed charter text, and can inspect the delegation scope it was submitted under. Together with criterion 6, this adapts the readiness test Koinos proposes for its own slice: trace to evidence, inspect the scope and agreement references, and run the documented conformance examples ([koinos docs/vision.md:42](https://github.com/Moissanite-Labs/koinos/blob/5b5f4f9eaffe45a718601744366b8ac507ffc4b6/docs/vision.md#L42)). Koinos's own conformance examples are not part of this slice.
-8. Each refusal rule has a test, as well as the successful journey.
+8. Each [refusal rule](#refusal-rules), R-1 to R-17, has a test, as well as the successful journey.
 
 ## Alternatives considered
 

@@ -5,7 +5,7 @@ This is a proposed sequence for discussion, not an approved delivery schedule or
 | Stage | Outcome | Evidence that it is done | Current state |
 | --- | --- | --- | --- |
 | 1. Frame the first use case | Intended user, a concrete creation journey, desired outcome, and non-goals are agreed. | A maintainer records a decision on proposal P-1. | Proposed in [First slice](first-slice.md). |
-| 2. Define boundaries | The roles of people and agents, the relationship to Exo and sibling projects, data and authority boundaries, and the decisions that need human review are described. | A maintainer records a decision on proposal P-2, and sibling maintainers have had the chance to object. | Proposed in [Ecosystem boundaries](ecosystem.md). |
+| 2. Define boundaries | The roles of people and agents, the relationship to Exo and sibling projects, data and authority boundaries, and the decisions that need human review are described. | A maintainer records a decision on proposal P-2, and sibling maintainers have had the chance to object. Proposed: an issue in each affected sibling repository, open for at least 14 days. | Proposed in [Ecosystem boundaries](ecosystem.md). |
 | 3. Design a first slice | Approaches are compared against the use case, tradeoffs and risks are documented, and a small milestone has observable acceptance criteria. | A maintainer records a decision on proposals P-1 and P-3. | Proposed in [First slice](first-slice.md#acceptance-criteria). |
 | 4. Build and evaluate | The first slice is delivered and assessed against its acceptance criteria. | Each acceptance criterion is demonstrated with synthetic data and reviewed. | Not started. A [local prototype](prototype.md) for testing the proposal is proposal P-4; it would not settle the stack. |
 
