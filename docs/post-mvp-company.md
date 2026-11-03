@@ -1,19 +1,24 @@
 # Proposal: Exofab after the MVP
 
-Status: proposal. Not adopted. Who decides for Exofab is open in #7. The decision request is #14.
+Status: proposal. Not adopted. Who decides for Exofab is open in #7. The decision request is #14. The split in this document was refined on 2026-11-02: formation can happen in Exofab before a build, and the build itself sits in Synbios.
 
 ## What Exofab is for
 
-A product reaches Exofab after it is built. An MVP is enough.
+Exofab work can start before any build. A team can form there. A company can form there.
 
-Exofab turns that product into a real company. It helps get the product into the hands of users. It covers the work that comes after the build: forming the company, ownership, sales, money, and taxes.
+Exofab also carries a product after it is built. An MVP is enough for that part.
+
+Exofab turns a product into a real company. It helps get the product into the hands of users. It covers the company work, before the build and after it: forming the team, forming the company, ownership, sales, money, and taxes.
+
+The build itself is not Exofab work. Building, and working together on the build, happens in Synbios.
 
 ## The split between projects
 
 | Stage | Home | What happens there |
 | --- | --- | --- |
+| Formation, before the build | Exofab | People find each other, form a team, agree roles, and can form the company. |
 | Build | Synbios | People and agents build software together. Synbios is like GitHub, redesigned from the ground up for agents first. Work is scoped, reviewed, and accepted there. |
-| After the MVP | Exofab | The product becomes a company. The company reaches users and runs its money and tax work. |
+| After the MVP | Exofab | The product becomes a company, or the company formed earlier takes it to users. The company reaches users and runs its money and tax work. |
 | Agent work | Exo | Exo is the agent foundation. Agents from Exo can do prepared tasks in either place, inside the grants people give them. |
 
 ## Work Exofab would cover
@@ -50,7 +55,7 @@ The pilot is done when the owners can point to a formed company, a signed owners
 - Which country and state should the first slice support? Incorporation and tax rules differ by place.
 - Which company forms should the first slice support?
 - What fields does the Synbios handoff pack need? Ownership work needs a clear record of who built what.
-- Does the pre-build matching work proposed in #5 stay in Exofab, move to Synbios, or stop?
+- Which parts of a team charter stay in Exofab, and which parts become build tasks in Synbios?
 - What data model holds company records, and where would private records live, if not in this repository?
 - Who decides each of these? See #7.
 
@@ -58,6 +63,6 @@ The pilot is done when the owners can point to a formed company, a signed owners
 
 This proposal changes the direction in #5, #8, #11, and #13.
 
-- #5 and #8 put finding people and forming a team inside Exofab, before a build. This proposal puts that work in Synbios.
+- #5 and #8 put finding people and forming a team inside Exofab, before a build. This proposal keeps that work in Exofab. It moves the build steps of that slice to Synbios: delegating a build task, doing the work, and reviewing it.
 - #11 records a credos draft that does not promise incorporation or equity allocation. This proposal makes both core Exofab work, with human agreements and human signatures.
 - #13 lists ventures as a later step, only if decided. This proposal makes ventures the main job.
