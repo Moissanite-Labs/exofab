@@ -1,6 +1,6 @@
 # Agent guidance
 
-Read [README](README.md), [orientation](docs/orientation.md), and the [roadmap](docs/roadmap.md) before contributing. Check current issues and pull requests for overlapping work.
+Read [README](README.md), [orientation](docs/orientation.md), [ecosystem boundaries](docs/ecosystem.md), and the [roadmap](docs/roadmap.md) before contributing. Check current issues and pull requests for overlapping work.
 
 - Treat the project direction and roadmap as early proposals. Do not present unimplemented capabilities or unresolved choices as decisions.
 - Keep work focused and reviewable. Cite evidence, state assumptions, and report what was actually verified.
