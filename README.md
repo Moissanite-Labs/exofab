@@ -6,6 +6,6 @@ This repository currently contains project orientation and proposals, not a runn
 
 - [Orientation](docs/orientation.md) — purpose, context, and open questions
 - [Roadmap and decisions](docs/roadmap.md) — proposed next steps and the current decision record
-- [Proposal: Exofab after the MVP](docs/post-mvp-company.md): what Exofab would do after a product is built (proposal, not adopted)
+- [Proposal: Exofab after the MVP](docs/post-mvp-company.md): how Exofab forms teams and companies, before and after a build (proposal, not adopted)
 - [Contributing](CONTRIBUTING.md) — how to make a useful, reviewable contribution
 - [Agent guidance](AGENTS.md) — working instructions for automated contributors
