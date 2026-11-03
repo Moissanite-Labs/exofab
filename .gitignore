@@ -1,0 +1,8 @@
+# Local hub data and generated output
+.exofab/
+out/
+*.pem
+*.key
+*.lock
+*.tmp
+node_modules/

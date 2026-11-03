@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark light">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'none'; object-src 'none'; form-action 'self'">
+  <meta name="referrer" content="no-referrer">
+  <title>Exofab prototype</title>
+  <link rel="icon" href="/app/icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/app/styles.css">
+  <script type="module" src="/app/app.mjs"></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <div class="banner" role="note">
+    <span class="banner-dot" aria-hidden="true"></span>
+    Local prototype. Synthetic data only. Keys stay in this browser.
+  </div>
+
+  <header class="site-header">
+    <div class="brand">
+      <a class="brand-link" href="#/discover">
+        <span class="brand-mark" aria-hidden="true"></span>
+        <span class="brand-name">Exofab</span>
+      </a>
+      <span class="brand-tag">first-slice prototype</span>
+    </div>
+
+    <nav class="site-nav" aria-label="Primary">
+      <ul class="nav-list">
+        <li><a class="nav-link" href="#/discover" data-nav="discover">Discover</a></li>
+        <li><a class="nav-link" href="#/projects" data-nav="projects">My projects</a></li>
+        <li><a class="nav-link" href="#/profile" data-nav="profile">Profile</a></li>
+      </ul>
+    </nav>
+
+    <div class="identity" id="identity">
+      <label class="identity-label" for="identity-select">Acting as</label>
+      <select class="input input-compact" id="identity-select" aria-describedby="identity-hint" disabled>
+        <option value="">No identity yet</option>
+      </select>
+      <button class="btn btn-small" type="button" id="identity-new">New identity</button>
+      <p class="identity-hint" id="identity-hint">Switcher is a single-machine demonstration aid.</p>
+    </div>
+  </header>
+
+  <div class="status" id="status" role="status" aria-live="polite" aria-atomic="true"></div>
+
+  <main class="main" id="main" tabindex="-1">
+    <p class="boot">Loading the client. If this message stays, this browser could not start it: it needs JavaScript modules and WebCrypto with Ed25519.</p>
+    <noscript><p class="boot">This prototype needs JavaScript.</p></noscript>
+  </main>
+
+  <footer class="site-footer">
+    <p>A signature proves control of a key, not identity. This prototype does not move money, create legal agreements, or score people.</p>
+  </footer>
+
+  <div id="dialog-root"></div>
+</body>
+</html>

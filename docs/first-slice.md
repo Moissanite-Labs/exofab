@@ -193,4 +193,4 @@ The slice is ready for review when each of these can be shown, using synthetic d
 
 ## Validation plan
 
-A local prototype for testing this design against the acceptance criteria above is proposed in a separate pull request. Its runtime and structure are a proposal of their own and would not settle the project's technology stack.
+A local prototype for testing this design against the acceptance criteria above is described in [prototype](prototype.md). Its runtime and structure are a proposal of their own, P-4 in the [decision record](roadmap.md#proposals-under-review), and would not settle the project's technology stack.
