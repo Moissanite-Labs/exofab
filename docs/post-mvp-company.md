@@ -65,5 +65,5 @@ The pilot delivers four things inside Exofab: the company checklist, the ownersh
 This proposal changes the direction in #5, #8, #11, and #13.
 
 - #5 and #8 put finding people and forming a team inside Exofab, before a build. This proposal keeps that work in Exofab. It moves the build steps of that slice to Synbios: delegating a build task, doing the work, and reviewing it.
-- #11 records a credos draft that does not promise incorporation or equity allocation. This proposal makes both core Exofab work, with human agreements and human signatures.
+- #11 records a credos draft that does not promise incorporation or equity allocation. This proposal makes both core Exofab work, with human agreements and human approval of each signature, filing, payment, and tax submission that an agent performs.
 - #13 lists ventures as a later step, only if decided. This proposal makes ventures the main job.
