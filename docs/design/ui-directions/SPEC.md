@@ -1,4 +1,4 @@
-# Exofab · Forge screen · Three design directions
+# Exofab · Forge screen · Four design directions
 
 **Status:** design exploration, not production code.
 **Example data:** every project name, person, agent, hash, time and count on these screens is fictional. The example project is *Tidepool, a field journal app for marine volunteers*. Each page labels itself "Example data".
@@ -8,6 +8,7 @@
 | 1 | `1-crystal-lattice.html` | Dark, luminous; the Moissanite lab look |
 | 2 | `2-workshop-bench.html` | Light, tactile; a maker's bench |
 | 3 | `3-field-ledger.html` | Editorial and calm; a ship's log |
+| 4 | `4-crystal-lattice-merged.html` | Crystal Lattice with the Field Ledger's signature and margin sources (chosen 2026-11-03) |
 
 Screenshots are in `shots/<name>-desktop.png` (1440×900) and `shots/<name>-mobile.png` (390×844 @2x). Full-page and post-approval captures are in `shots/full/`.
 
@@ -183,7 +184,7 @@ This is Crystal Lattice with Field Ledger's provenance and signature, redrawn in
   - Mobile shows it as a 5-row list.
   - Screen-reader text gives the ring and "current stage".
   - Footer: "18 bonded · 9 human · 9 agent · 1 awaits you · 3 forming". It updates to "19 bonded · 9 human · 10 agent · 3 forming" after signing.
-- **Provenance threads:** dotted quadratic curves run from the pending node (Prototype ring) to each source node (1 Ana, 2 Scout, 3 Teo, 4 Loom).
+- **Provenance threads:** dotted quadratic curves run from the pending node (Prototype ring) to each source node (1 Teo, 2 Ana, 3 Scout, 4 Loom).
 
 ### New / changed tokens
 | Token | Value | Use |
@@ -207,7 +208,7 @@ The rest is unchanged from D1: `--bg #08090a`, `--s1 #0e1012`, `--tx3 #868e98`, 
     - ≥700 px container: a right margin column (≈236 px, left hairline) beside the reasoning.
     - Below that: inline under the "If you sign" block, with a **Hide / Show** toggle (`#srcToggle`, `aria-expanded`, `aria-controls="notes"`), open by default.
   - Each note shows its number chip, the human dot or agent diamond, the name, a PERSON / AGENT vN label, the source line, and `id · reviewed by <name>` in mono.
-  - The reasoning has four superscript `.ref` links (`href="#src-n"`, each with an `aria-label` naming the source, e.g. "Source 3: Teo Lindqvist, design review round 3").
+  - The reasoning has four superscript `.ref` links (`href="#src-n"`, each with an `aria-label` naming the source, e.g. "Source 1: Teo Lindqvist, design review round 3").
 - **States**
   | State | Ref | Note | Crystal |
   |---|---|---|---|
