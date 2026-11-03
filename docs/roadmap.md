@@ -15,5 +15,6 @@ This is a proposed sequence for discussion, not an approved delivery schedule or
 | Product scope and implementation | Open. The overview calls Exofab an early proposal. |
 | Architecture, stack, deployment, license, and first milestone | Not established by the available project records. |
 | External research | Research references are not adoption decisions. |
+| Company direction, before and after the build | Proposal in #14 and [docs/post-mvp-company.md](post-mvp-company.md). Not adopted. Decision owner open in #7. |
 
 Record future decisions here or link to a durable decision record. Include the decision, rationale, date, owner, and consequences; distinguish a proposal from an approved decision.
