@@ -1,6 +1,6 @@
 # Proposal: Exofab after the MVP
 
-Status: proposal. Not adopted. Who decides for Exofab is open in #7. The decision request is #14. The split in this document was refined on 2026-11-02: formation can happen in Exofab before a build, and the build itself sits in Synbios.
+Status: proposal. Not adopted. Who decides for Exofab is open in #7. The decision request is #14. The split in this document was refined on 2026-11-02: formation can happen in Exofab before a build, and the build itself sits in Synbios. The reconciliation with #5 and with the Synbios handoff, and the decisions it needs, are proposed in #18.
 
 ## What Exofab is for
 
@@ -19,24 +19,24 @@ The build itself is not Exofab work. Building, and working together on the build
 | Formation, before the build | Exofab | People find each other, form a team, agree roles, and can form the company. |
 | Build | Synbios | People and agents build software together. Synbios is like GitHub, redesigned from the ground up for agents first. Work is scoped, reviewed, and accepted there. |
 | After the MVP | Exofab | The product becomes a company, or the company formed earlier takes it to users. The company reaches users and runs its money and tax work. |
-| Agent work | Exo | Exo is the agent foundation. Agents from Exo can do prepared tasks in either place, inside the grants people give them. |
+| Agent work | Exo | Exo is the agent foundation. Agents from Exo can do prepared tasks in either place, inside the grants people give them. No grant covers a reserved act; see the rules below. |
 
 ## Work Exofab would cover
 
-- **Forming the company.** Choose where to form it and what form it takes. Prepare the papers. Track each filing and its date. A human owner signs.
+- **Forming the company.** The human owners choose where to form it and what form it takes, on advice from qualified people. Exofab lays out the options and what each one means. It does not make the choice. Agents prepare the papers. Exofab tracks each filing and its date. A human owner files and signs.
 - **Ownership structure.** Record who owns what share. Record what each person agreed in writing. Exofab stores the agreed terms. It does not set the terms.
 - **Reaching users.** Plan the first launch. State who the first users are, what the price is, and which channel reaches them first.
-- **Revenue.** Track how money comes in. Keep price, invoice, and payment records in one place.
+- **Revenue.** Track how money comes in. Keep price, invoice, and payment records in the private store named under company records.
 - **Accounting.** Keep the books in order. Track income and costs as they happen, not at the end of the year.
-- **Taxes.** List what filings are due and when. Keep the records each filing needs ready for the person who prepares it.
-- **Company records.** Keep filings, agreements, and decisions in one place, so an owner can find any paper fast.
+- **Taxes.** List what filings are due and when. Keep the records each filing needs ready for the person who prepares and submits it.
+- **Company records.** Keep filings, agreements, and decisions in one place, so an owner can find any paper fast. That place is a private store the owners control, outside this repository and outside any public Exofab service. This repository holds record templates and synthetic examples only. Which store the first slice uses is an open question below.
 
 ## Rules
 
 - People decide. Agents prepare drafts, checklists, dates, and records.
-- No agent files papers, signs a document, moves money, or submits a tax filing on its own approval.
+- **Reserved acts.** No agent files a company paper, signs a document, moves money, or submits a tax filing. Not on its own approval, and not under a grant. These four acts are reserved to people. An agent may prepare each of them. The act itself is done by a named human owner, or by a qualified adviser the owners engage. No grant, delegation, or standing approval given to an agent covers a reserved act, even when the agent prepared the work. A change to this rule, such as the bounded agent spending explored in Moissanite-Labs/synmerit#16, needs its own recorded decision and legal review before it can apply to a real company.
 - Legal and tax advice comes from qualified people. Exofab organises the work. It does not replace a lawyer or an accountant.
-- Real company records are private. This public repository holds designs and proposals only. It must never hold a real company's papers, accounts, or tax data.
+- Real company records are private. This public repository holds designs, templates, and proposals only. It must never hold a real company's papers, accounts, or tax data.
 
 ## First slice
 
@@ -48,7 +48,7 @@ Pick one real product that already has an MVP. Run one pilot from end to end:
 4. Write a launch plan for the first users. State the price, the first channel, and the first sales steps.
 5. Set up a money and tax calendar for the first 90 days. List income, costs, filing dates, and the records each filing needs.
 
-The pilot is done when the owners can point to a formed company, a signed ownership record, a launch plan, and a calendar they trust.
+The pilot delivers four things inside Exofab: the company checklist, the ownership terms for the owners to sign, the launch plan, and the calendar. Two things happen outside Exofab, done by the owners and the advisers they engage: the company is formed, and the ownership record is signed. Exofab tracks both in the checklist. It does neither. The pilot is done when the owners can point to the four deliverables, and the checklist shows the formation and the signing as done by named people, with the papers in the owners' private store.
 
 ## Open questions
 
@@ -56,7 +56,8 @@ The pilot is done when the owners can point to a formed company, a signed owners
 - Which company forms should the first slice support?
 - What fields does the Synbios handoff pack need? Ownership work needs a clear record of who built what.
 - Which parts of a team charter stay in Exofab, and which parts become build tasks in Synbios?
-- What data model holds company records, and where would private records live, if not in this repository?
+- What data model holds company records, and which private store should the first slice use? Options seen so far: a private repository the owners control, an encrypted store on the owners' own machines, or a private hosted Exofab workspace, which does not exist yet. In every option this repository holds templates only.
+- Should an agent ever perform a reserved act under a per-act, exact-text human approval, as Exo's gate allows for tool calls? This proposal says no for the first slice. A different answer needs a recorded decision and legal review.
 - Who decides each of these? See #7.
 
 ## Relation to current proposals
