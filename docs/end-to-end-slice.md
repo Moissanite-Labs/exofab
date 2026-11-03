@@ -9,13 +9,13 @@ Given by Shahid Arifuddin on 2026-11-03, refining #14:
 - **Synbios** is the self-contained source control and product-building hub. The build, and working together on the build, happen there.
 - **Exofab** handles the venture and DAO-building work around a product, before or after the build: the team, the company, the ownership process, reaching users, revenue, accounting, and taxes.
 - **Synmerit**, the home of the Koinos protocol, covers participation, ownership, and economic coordination: the portable record of who took part, what they agreed to, what was accepted, and the economic terms they chose.
-- **Exo** is the agent foundation. Agents from Exo do prepared tasks in any of the three, inside the grants people give them, and never a reserved act.
+- **Exo** is the agent foundation. Agents from Exo do prepared tasks in any of the three, inside the grants people give them, and perform the four approved acts only under a per-act approval.
 
-**Reserved acts.** Four acts are reserved to people in every project of this slice: filing a company paper, signing a document, moving money, and submitting a tax filing. An agent may prepare each of them. No grant covers the act itself. This is proposed in #15 and needs confirmation (decision D2 in the reconciliation record).
+**Approved acts.** Four acts need their own approval in every project of this slice: filing a company paper, signing a document, moving money, and submitting a tax filing. An agent prepares and performs each of them. No grant or standing approval covers the act. Each act needs its own exact-text approval from an owner, and a tax submission always needs its own. A step stays with a person only where a law or a provider requires a natural person, cited per step. This was directed on #15 on 2026-11-03 (decision D2 in the reconciliation record).
 
 ## Responsibility matrix
 
-Each cell says what that project does for the activity. An empty cell means the project has no part in it. The last column names the human act that no project and no agent can take over.
+Each cell says what that project does for the activity. An empty cell means the project has no part in it. The last column names the human decision or approval that no project and no agent can take over.
 
 | Activity | Exofab | Synbios | Synmerit | Exo | People |
 | --- | --- | --- | --- | --- | --- |
@@ -25,9 +25,9 @@ Each cell says what that project does for the activity. An empty cell means the 
 | Build | | Owns, self-contained: tasks, artifacts, test evidence, forge review, acceptance | | Does the prepared work | A human other than the artifact author approves |
 | Contribution record | Sequences the records in the pilot, with the exact Synbios export bytes as the artifact | Exports the task bundle | Defines and verifies `contribution.submitted`, `reviewed`, `accepted`, `disputed` | | Reviewer and steward are people |
 | MVP handoff pack | Receives it and starts the company checklist from it | Produces it from the accepted tasks | May hold a reference to it (open) | | Participants consent to sharing it |
-| Forming the company | Lays out the options, tracks each filing and its date, keeps the checklist | | | Prepares the papers | Owners choose, file, and sign, on advice from qualified people |
-| Ownership and participation terms | Runs the discussion, drafts the terms, tracks signatures, points to the private store that holds the signed instrument | | Records the terms digest each owner consented to, and the credit that informs the terms | Drafts | Owners decide and sign |
-| Users, revenue, accounting, taxes | Owns the launch plan, the revenue and accounting records, and the tax calendar | | | Prepares plans, calendars, and record lists | Moving money and submitting a tax filing |
+| Forming the company | Lays out the options, tracks each filing, its approval, and its date, keeps the checklist | | | Prepares the papers and files them under per-act approval | Owners choose the place and form on qualified advice, and approve each filing and signature; a step stays with a person only where a rule requires it |
+| Ownership and participation terms | Runs the discussion, drafts the terms, tracks signatures and their approvals, points to the private store that holds the signed instrument | | Records the terms digest each owner consented to, and the credit that informs the terms | Drafts, and signs under per-act approval where a rule does not require a natural person | Owners decide the terms and approve each signature |
+| Users, revenue, accounting, taxes | Owns the launch plan, the revenue and accounting records, and the tax calendar | | | Prepares plans, calendars, and record lists; moves money and submits filings under per-act approval | Owners approve each payment and each tax submission |
 | Funding, rights, bounded spending | Hosts the human side of a funding request, later | | Design scope of Moissanite-Labs/synmerit#16; not in this slice | | Funders consent to exact terms |
 | Private company records | Holds templates and synthetic examples only; points to the owners' store | | | | Owners control the store |
 
@@ -81,13 +81,13 @@ Steps 6 to 12 repeat for each task until Ada and Ben agree that the product is a
 
 **Venture, in Exofab**
 
-14. Exofab builds the company checklist from the pack: each step, its owner, and its date. Every reserved act names Ada or Ben, or an adviser they engage.
-15. Exofab lays out the formation options for the place and the form the owners are considering. Ada and Ben choose, on advice from a qualified person. An agent prepares the papers. Ada files and signs. The checklist records the filing as done. The papers go to the owners' private store (H9).
-16. An agent drafts ownership terms from the charter and the credit summary (H7). Ada and Ben change them, agree them, and sign outside Exofab. The signed instrument goes to the private store (H9). Each owner consents to the digest of the agreed text in a Koinos agreement record (H8).
+14. Exofab builds the company checklist from the pack: each step, its owner, and its date. Every approved act names the agent that will perform it and the owner, Ada or Ben, whose approval it needs.
+15. Exofab lays out the formation options for the place and the form the owners are considering. Ada and Ben choose, on advice from a qualified person. An agent prepares the papers and shows Ada the exact filing. Ada approves it. The agent files it. Where the filing office requires a natural person, for example an identity check, Ada does that step and the checklist names the rule. The checklist records the filing as done, by which agent, under which approval. The papers go to the owners' private store (H9).
+16. An agent drafts ownership terms from the charter and the credit summary (H7). Ada and Ben change them and agree them. Each sees the exact final text and approves the signature; the agent applies it, unless the signing rule in their place requires a named person to sign, in which case they sign themselves and the checklist names the rule. The signed instrument goes to the private store (H9). Each owner consents to the digest of the agreed text in a Koinos agreement record (H8).
 17. Exofab holds the launch plan: the first users, the price, the first channel, and the first sales steps.
-18. Exofab holds the 90-day money and tax calendar: income, costs, filing dates, and the records each filing needs. Each payment and each tax submission names the person who will do it.
+18. Exofab holds the 90-day money and tax calendar: income, costs, filing dates, and the records each filing needs. Each payment and each tax submission names the agent that will perform it and the owner whose per-act approval it needs. A tax submission always needs its own approval.
 
-**Done when** the owners can point to the checklist, the agreed terms, the launch plan, and the calendar in Exofab; the checklist shows the formation and the signing as done by named people; and a reader can trace the ownership record back through the handoff pack and the accepted tasks to the charter.
+**Done when** the owners can point to the checklist, the agreed terms, the launch plan, and the calendar in Exofab; the checklist shows the formation and the signing as done, each act with the agent that did it and the approval that covered it; and a reader can trace the ownership record back through the handoff pack and the accepted tasks to the charter.
 
 ## Acceptance criteria
 
@@ -98,7 +98,7 @@ Synthetic data only. Where a criterion reuses the [first slice](first-slice.md#a
 3. **E-3, build.** The task reaches `accepted` in Synbios with current passing test evidence and a review by a human who is not the artifact author. The export verifies with `synbios verify`.
 4. **E-4, contribution record.** The Koinos contribution cites the exact export bytes. Delegation, review, acceptance, and refusals follow first slice criteria 4 to 8. The bundle verifies with both verifiers and re-imports to the same head, participants, and attribution.
 5. **E-5, handoff pack.** One pack carries the six fields proposed in synbios#51. Every accepted task in it has an export that verifies. The contributors and reviewers named in the pack match the Koinos attribution for those tasks. Each participant's consent to sharing is recorded.
-6. **E-6, reserved acts.** Every reserved act in the checklist names a person. An agent credential cannot mark a reserved act as done, and a test shows the refusal.
+6. **E-6, approved acts.** Every approved act in the checklist records the agent that performed it and the owner's per-act approval that covered it, or the rule that kept the step with a person. An agent cannot perform an approved act under a grant or a standing approval alone, and a test shows the refusal. A tax submission without its own approval is refused.
 7. **E-7, ownership terms.** The agreed terms exist as bytes with a digest. Each owner consents to that digest with their own key. The consent records verify.
 8. **E-8, private records.** No real company record, name, or account enters any public repository or hub log. A check runs against the synthetic pack and the hub data.
 9. **E-9, launch and calendar.** The launch plan and the 90-day calendar exist, and each item names its owner and its date.
@@ -106,7 +106,7 @@ Synthetic data only. Where a criterion reuses the [first slice](first-slice.md#a
 
 ## Outside this slice
 
-- Funding requests, funder rights, and bounded agent spending (Moissanite-Labs/synmerit#16). The ownership record above is the input that design needs.
+- Funding requests, funder rights, and bounded agent spending (Moissanite-Labs/synmerit#16). The ownership record above is the input that design needs. Automated decision making for approved acts is a later feature outside this slice.
 - Token ownership and settlement (Moissanite-Labs/synmerit#6). The slice uses Koinos 0.1 agreement records only.
 - A DAO legal wrapper. No current document defines one (D7).
 - Matching records in Koinos (#11).
