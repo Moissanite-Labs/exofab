@@ -11,8 +11,16 @@ The demo preserves the fictional Tidepool crew, source notes, lattice, approval 
 ## Verification
 
 - `node scripts/check-demo.cjs` from the repository root checks syntax, IDs, anchors, local-only assets and synthetic labels.
-- `node scripts/test-demo.cjs` requires Playwright 1.62.1 and its Chromium. Optionally set `CHROMIUM_EXECUTABLE` to a local Chromium executable. It exercises desktop/mobile, approval, decline/cancel, escaped notes, revision, revoke, reset, download, no overflow, no external requests, and a normal-motion double-click/revoke race.
-- Local browser execution was blocked by this build environment's socket restriction. Browser assertions must pass in CI before release. Safari, Firefox and real screen readers are not verified.
+- Browser tests use isolated, integrity-locked Playwright 1.62.1 tooling, not a product dependency. From the repository root on Linux/macOS:
+
+  ```sh
+  npm ci --prefix scripts/demo-tests --ignore-scripts
+  scripts/demo-tests/node_modules/.bin/playwright install chromium
+  NODE_PATH="$PWD/scripts/demo-tests/node_modules" node scripts/test-demo.cjs
+  ```
+
+  Linux may also need Playwright's documented browser system dependencies (`playwright install --with-deps chromium`, as CI uses). Alternatively set `CHROMIUM_EXECUTABLE` to a pre-installed Chromium executable. The `NODE_PATH` setting is necessary because tooling is isolated from the repository root. Tests cover 1440, 390 and 320px viewports, keyboard/source controls, approval, decline/cancel, escaped notes, revision, revoke, reset, download, no overflow, no external requests, paused-motion visibility, accessible decision state, and a normal-motion double-click/revoke race.
+- Local browser execution was blocked by this build environment's socket restriction. At `46d91266ecb41ba4ebe8dc907807876bfbde5264`, [CI run 41757169986](https://github.com/Moissanite-Labs/exofab/actions/runs/41757169986) passed all browser checks; [Abu's independent review](https://github.com/Moissanite-Labs/exofab/pull/20#pullrequestreview-5762176029) also reports passing the same tests outside CI. Later changes still need their own checks before release. Safari, Firefox, real screen readers and visual screenshot inspection are not verified.
 
 ## Pages release
 
