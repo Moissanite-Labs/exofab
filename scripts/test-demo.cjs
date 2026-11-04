@@ -29,4 +29,4 @@ const path=require('node:path');
  // Immediate revoke during the delayed milestone is also safe with normal motion.
  const page=await browser.newPage();await page.goto('file://'+path.resolve(__dirname,'../site/index.html'));await page.locator('#approve').dblclick();await page.locator('#revoke').waitFor();await page.locator('#revoke').click();await page.waitForTimeout(1800);assert.equal(await page.locator('#ms').evaluate(e=>e.classList.contains('on')),false);assert.equal(await page.locator('#trace .new').count(),2);console.log('normal-motion double-click + immediate revoke: passed');
  await browser.close();
-})().catch(e=>{console.error(e);process.exitCode=1});
+})().catch(e=>{console.error(e);process.exit(1)});
