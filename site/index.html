@@ -232,7 +232,7 @@ sup{line-height:0}
 .nib{fill:#fff;opacity:0}
 .sigline.signing .nib{opacity:1}
 .sigline.revoked .sig{opacity:.35;filter:none}
-.sigline .strike{position:absolute;left:18px;width:300px;bottom:28px;height:1px;background:var(--tx2);transform:scaleX(0);transform-origin:left;transition:transform var(--d-med) var(--ease-out)}
+.sigline .strike{position:absolute;left:18px;width:min(300px,calc(100% - 18px));bottom:28px;height:1px;background:var(--tx2);transform:scaleX(0);transform-origin:left;transition:transform var(--d-med) var(--ease-out)}
 .sigline.revoked .strike{transform:scaleX(1)}
 .under{font:10.5px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--tx3);margin-top:8px;display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
 .actions{display:flex;gap:10px;flex-wrap:wrap}
@@ -702,7 +702,7 @@ $('confirmDecline').addEventListener('click',()=>{if(decisionState==='declined')
   out.classList.add('on');out.focus({preventScroll:true});say('Declined. Nothing was sent. No agent was contacted.');});
 reviseB.addEventListener('click',()=>{if(busy)return;record('revision_requested');out.textContent='Demo revision requested: the proposal remains open. No agent was contacted. You can still approve or decline.';out.classList.add('on');out.focus({preventScroll:true});say('Demo revision requested. No agent was contacted.');});
 $('msClose').addEventListener('click',()=>{$('ms').classList.remove('on');out.focus({preventScroll:true});});
-out.addEventListener('click',e=>{if(e.target.id==='revoke'&&decisionState==='approved'){decisionState='revoked';record('revoked');sigline.classList.add('revoked');$('pill').textContent='Revoked';$('pill').className='pill muted';$('dlabelText').textContent='Decision 07 · demo approval revoked';$('ldot').style.cssText='background:var(--tx3);box-shadow:none';$('ms').classList.remove('on');
+out.addEventListener('click',e=>{if(e.target.id==='revoke'&&decisionState==='approved'){decisionState='revoked';record('revoked');pend.g.setAttribute('aria-label',`Agent: ${pend.title}; demo approval revoked`);sigline.classList.add('revoked');$('pill').textContent='Revoked';$('pill').className='pill muted';$('dlabelText').textContent='Decision 07 · demo approval revoked';$('ldot').style.cssText='background:var(--tx3);box-shadow:none';$('ms').classList.remove('on');
   e.target.outerHTML='<div class="stamp" style="color:var(--tx2);margin-top:10px">Demo approval revoked · '+time()+' · nothing else changed</div>';
   addTrace('<i class="dot g"></i><span class="w">You revoked the demo approval</span><time>now</time><span class="from">demo history kept · nobody notified</span><code>d07·r1</code>',pend.id);
   out.focus({preventScroll:true});say('Demo approval revoked. Nobody was notified. Nothing else changed.');}});
