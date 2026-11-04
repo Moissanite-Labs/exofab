@@ -1,10 +1,10 @@
 name: Exofab demo Pages
 on:
   pull_request:
-    paths: ['site/**', 'scripts/*demo.cjs', '.github/workflows/pages.yml']
+    paths: ['site/**', 'scripts/**', '.github/workflows/pages.yml']
   push:
     branches: [main]
-    paths: ['site/**', 'scripts/*demo.cjs', '.github/workflows/pages.yml']
+    paths: ['site/**', 'scripts/**', '.github/workflows/pages.yml']
   workflow_dispatch:
 permissions:
   contents: read
@@ -25,10 +25,10 @@ jobs:
       - run: node scripts/check-demo.cjs
       - name: Install isolated browser test tools
         run: |
-          npm install --prefix "$RUNNER_TEMP/demo-tools" --no-save --ignore-scripts playwright@1.62.1
-          "$RUNNER_TEMP/demo-tools/node_modules/.bin/playwright" install --with-deps chromium
+          npm ci --prefix scripts/demo-tests --ignore-scripts
+          scripts/demo-tests/node_modules/.bin/playwright install --with-deps chromium
       - name: Exercise desktop and mobile demo
-        run: NODE_PATH="$RUNNER_TEMP/demo-tools/node_modules" node scripts/test-demo.cjs
+        run: NODE_PATH="$GITHUB_WORKSPACE/scripts/demo-tests/node_modules" node scripts/test-demo.cjs
       - uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa
         if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
         with:

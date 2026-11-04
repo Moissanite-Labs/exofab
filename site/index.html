@@ -355,6 +355,7 @@ footer em{font-family:var(--serif);font-size:16px;color:var(--tx2)}
   .crystallized .n2 .glint{animation:none!important}
   .nib{display:none}
 }
+.motion-paused *,.motion-paused *::before,.motion-paused *::after{animation-play-state:paused!important;transition:none!important}.node:focus-visible{outline:none}.node:focus-visible .hlring{opacity:1;stroke:#ffd79a}.sig{max-width:calc(100% - 30px)}
 .skip{position:absolute;left:-9999px}.skip:focus{position:fixed;left:16px;top:16px;z-index:100;background:#fff;color:#000;padding:12px}.demo-banner{padding:24px clamp(16px,4vw,56px);background:#14202b;border-bottom:1px solid #2a4658;display:flex;gap:24px;align-items:center;justify-content:space-between}.demo-banner strong{font:12px ui-monospace,monospace;color:#7cc6f2;letter-spacing:.1em}.demo-banner p{margin:8px 0 0;color:#eceef0;font-size:14px;line-height:1.65}.demo-tools{display:flex;flex-wrap:wrap;gap:10px;max-width:360px}.demo-tools button,.demo-tools a{font:13px system-ui;padding:10px 12px;border:1px solid #607080;border-radius:6px;background:#0e1012;color:#eceef0;text-decoration:none}.demo-tools button{cursor:pointer}@media(max-width:760px){.demo-banner{display:block}.demo-tools{margin-top:16px}}
 </style>
 </head>
@@ -362,7 +363,7 @@ footer em{font-family:var(--serif);font-size:16px;color:var(--tx2)}
 <a class="skip" href="#demo-start">Skip to demo</a>
 <section class="demo-banner" aria-label="Demo information">
 <div><strong>EXOFAB / INTERACTIVE DEMO</strong><p>A fictional crew. A proposal you can inspect, approve, decline or revise.<br>Everything runs in this tab. No invites, signatures, agents, filings or payments are real. Refresh clears your choices.</p></div>
-<div class="demo-tools"><a href="#demo-start">Try the decision ↓</a><button id="demoReset">Reset demo</button><button id="demoExport">Download demo log</button><a href="https://github.com/Moissanite-Labs/exofab">Source &amp; project</a></div>
+<div class="demo-tools"><a href="#demo-start">Try the decision ↓</a><button id="demoMotion" aria-pressed="false">Pause motion</button><button id="demoReset">Reset demo</button><button id="demoExport">Download demo log</button><a href="https://github.com/Moissanite-Labs/exofab">Source &amp; project</a></div>
 </section>
 <noscript><p class="demo-banner">JavaScript is required for the interactive demo. All visible project content is fictional.</p></noscript>
 <header class="top">
@@ -397,7 +398,7 @@ footer em{font-family:var(--serif);font-size:16px;color:var(--tx2)}
     <section class="panel stagepanel col-c" aria-labelledby="lat-h">
       <div class="ph"><h2 id="lat-h">The crystal</h2><span class="mono">each node is a piece of work</span></div>
       <div class="lat" id="lat">
-        <svg id="svg" viewBox="-204 -184 408 368" role="img" aria-label="Project lattice: 1 idea node, 6 shape nodes, 11 of 12 prototype nodes bonded with 1 awaiting your approval, 3 build nodes forming. Threads link decision 07 to its four sources."></svg>
+        <svg id="svg" viewBox="-204 -184 408 368" role="group" aria-label="Project lattice: 1 idea node, 6 shape nodes, 11 of 12 prototype nodes bonded with 1 awaiting your approval, 3 build nodes forming. Threads link decision 07 to its four sources."></svg>
         <div class="tip" id="tip" aria-hidden="true"></div>
       </div>
       <ol class="census" aria-label="Rings of the crystal, one per stage">
@@ -539,8 +540,9 @@ footer em{font-family:var(--serif);font-size:16px;color:var(--tx2)}
 <script>
 (()=>{
 const $=id=>document.getElementById(id);
+$('demoMotion').addEventListener('click',()=>{const paused=document.documentElement.classList.toggle('motion-paused');reduce=paused||matchMedia('(prefers-reduced-motion: reduce)').matches;$('demoMotion').setAttribute('aria-pressed',paused);$('demoMotion').textContent=paused?'Resume motion':'Pause motion';});
 const NS="http://www.w3.org/2000/svg", svg=$('svg');
-const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+let reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
 const S=31, R3=Math.sqrt(3);
 const dirs=[[1,0],[1,-1],[0,-1],[-1,0],[-1,1],[0,1]];
 function ring(k){if(!k)return[[0,0]];const out=[];let q=dirs[4][0]*k,r=dirs[4][1]*k;for(let i=0;i<6;i++)for(let j=0;j<k;j++){out.push([q,r]);q+=dirs[i][0];r+=dirs[i][1];}return out;}
@@ -597,7 +599,7 @@ nodes.forEach(n=>{
   if(n.st==='pending'){el('circle',{cx:n.x,cy:n.y,r:9,class:'pulse'},g);el('circle',{cx:n.x,cy:n.y,r:11,class:'ring'},g);const c=shape(n,g,'core',5.5);c.setAttribute('fill','none');c.setAttribute('stroke','#e9f4ff');c.setAttribute('stroke-width','1.4');n.coreEl=c;}
   else if(n.st==='forming'){el('circle',{cx:n.x,cy:n.y,r:9,class:'arc'},g);const c=shape(n,g,'core',4.5);c.setAttribute('opacity','.6');}
   else{shape(n,g,'core',n.k===0?8:6);if(n.k===2)el('circle',{cx:n.x,cy:n.y,r:6,fill:'url(#spec)',class:'glint'},g);}
-  n.g=g;
+  n.g=g;g.setAttribute('tabindex','0');g.setAttribute('role','img');g.setAttribute('aria-label',`${n.kind==='h'?'Person':'Agent'}: ${n.title}; ${n.st}`);g.addEventListener('focus',()=>showTip(n));g.addEventListener('blur',()=>tip.classList.remove('on'));
 });
 // ring key / census
 document.querySelectorAll('.rk').forEach(b=>{const k=+b.dataset.k;const on=()=>{if(k)guideEls[k-1].classList.add('gon');b.classList.add('on');nodes.filter(n=>n.k===k&&n.g).forEach(n=>n.g.classList.add('hl'))},off=()=>{guideEls.forEach(g=>g.classList.remove('gon'));b.classList.remove('on');clearHl()};
@@ -656,7 +658,7 @@ function drawSignature(done){
   let t0=0;const plan=ps.map((p,i)=>{p.style.strokeDasharray=L[i];p.style.strokeDashoffset=L[i];const d=Math.max(60,draw*L[i]/tot);const s=t0;t0+=d+gap;return{p,L:L[i],s,d};});
   const start=performance.now();
   const ease=x=>x<.5?2*x*x:1-Math.pow(-2*x+2,2)/2;
-  (function f(now){const t=now-start;
+  (function f(now){if(reduce){plan.forEach(o=>o.p.style.strokeDashoffset=0);sigline.classList.remove('signing');sigline.classList.add('signed');done();return;}const t=now-start;
     plan.forEach(o=>{const k=Math.min(1,Math.max(0,(t-o.s)/o.d));o.p.style.strokeDashoffset=o.L*(1-ease(k));if(k>0&&k<1){const pt=o.p.getPointAtLength(o.L*ease(k));nib.setAttribute('cx',pt.x);nib.setAttribute('cy',pt.y);}});
     if(t<t0)requestAnimationFrame(f);else{sigline.classList.remove('signing');sigline.classList.add('signed');done();}})(start);
 }
@@ -673,7 +675,7 @@ function approve(){
     $('pill').textContent='Demo approved';$('pill').className='pill signed';$('sigdate').textContent='Demo choice '+time()+' · not cryptographically signed';
     out.innerHTML='<div class="stamp">✓ Simulated approval as fictional Maya · '+time()+'</div><b>No invites were sent.</b> This tab shows a fictional decision and 4 example sources under illustrative ID <span class="mono" style="font-size:10px">d07·f1a9</span>. Download the demo log to keep your choices; refreshing clears them.<br><button class="mini" id="revoke">Revoke demo approval</button>';
     out.classList.add('on');out.focus({preventScroll:true});
-    const n=pend;n.st='done';n.g.classList.remove('pending');n.g.querySelectorAll('.ring,.pulse').forEach(x=>x.remove());
+    const n=pend;n.st='done';n.g.setAttribute('aria-label',`Agent: ${n.title}; demo approved`);n.g.classList.remove('pending');n.g.querySelectorAll('.ring,.pulse').forEach(x=>x.remove());
     n.coreEl.setAttribute('fill','url(#gs)');n.coreEl.removeAttribute('stroke');
     el('circle',{cx:n.x,cy:n.y,r:6,fill:'url(#spec)',class:'glint'},n.g);
     document.querySelectorAll('.edge[data-pend]').forEach(e=>e.classList.remove('ghost'));
