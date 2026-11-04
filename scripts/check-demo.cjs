@@ -1,0 +1,11 @@
+const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
+const html=fs.readFileSync(require('node:path').join(__dirname,'../site/index.html'),'utf8');
+const scripts=[...html.matchAll(/<script>([\s\S]*?)<\/script>/g)];assert.equal(scripts.length,1);new vm.Script(scripts[0][1]);
+const ids=[...html.matchAll(/\bid="([^"]+)"/g)].map(m=>m[1]);assert.equal(new Set(ids).size,ids.length,'unique HTML IDs');
+for(const [,id]of html.matchAll(/href="#([^"]+)"/g))assert(ids.includes(id),`missing anchor ${id}`);
+assert(!/<(?:script|link|img)[^>]+(?:src|href)="https?:/i.test(html),'no external assets');
+assert(!/\b(?:fetch|XMLHttpRequest|WebSocket|localStorage|sessionStorage|indexedDB)\b/.test(scripts[0][1]),'no networking or persistent storage');
+assert(html.includes('No invites, signatures, agents, filings or payments are real.'));
+assert(html.includes("format:'exofab-ui-demo/1',synthetic:true,verified:false"));
+assert(html.includes("if(decisionState!=='approved')return;"));
+console.log('Demo syntax, unique IDs, anchors, local-only assets, no networking/storage, synthetic labels: passed');
